@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A browser must open plain-http sites as well as https ones. Everything else stays at the
+    platform defaults: only system certificate authorities are trusted.
+-->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <!-- InsecureBaseConfiguration is deliberate: it is what lets a browser load http pages. -->
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

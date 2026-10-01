@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Chrome's home-screen search bar. @android:id/background lets the launcher clip and animate the
+    widget as one surface (Android 12+).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="6dp"
+    tools:targetApi="31">
+
+    <ImageView
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_widget_shield" />
+
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/search"
+        android:textColor="@color/widget_text"
+        android:textSize="16sp" />
+
+    <ImageView
+        android:id="@+id/widget_voice"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/widget_button"
+        android:contentDescription="@string/voice_search"
+        android:padding="12dp"
+        android:src="@drawable/ic_widget_mic" />
+
+    <ImageView
+        android:id="@+id/widget_image"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/widget_button"
+        android:contentDescription="@string/image_search"
+        android:padding="12dp"
+        android:src="@drawable/ic_widget_camera" />
+</LinearLayout>

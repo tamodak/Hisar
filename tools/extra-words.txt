@@ -1,0 +1,10 @@
+# Hisar's own additions to the blocked-words list, merged in by update-lists.sh.
+# One word or phrase per line, matched as whole words (case-insensitive).
+porn
+porno
+xxx
+nsfw
+hentai
+nude
+nudes
+onlyfans

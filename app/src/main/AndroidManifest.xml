@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Saving downloads to the shared Downloads folder needs this only before Android 10. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!--
+        allowBackup="false" and the extraction rules together keep browsing data on this device:
+        on Android 12 and later, allowBackup alone does not stop device-to-device transfer.
+        Plain-http sites are allowed through the network security config, as a browser needs; the
+        filters apply to them exactly as to https.
+    -->
+    <application
+        android:name=".HisarApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Hisar">
+
+        <!-- Google Safe Browsing for every WebView: malware and phishing pages the lists miss. -->
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="true" />
+
+        <!--
+            configChanges keeps the activity, and with it the tabs' WebViews and their pages,
+            alive across rotation, resizing and keyboard changes; Compose re-lays itself out.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Hisar.Starting"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.APP_BROWSER" />
+            </intent-filter>
+            <!-- Lets Hisar be chosen as the default browser, so links from other apps stay filtered. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Serves saved pages (MHTML) to WebView; covers only the saved-pages folder. Not
+            exported, and Hisar never grants its URIs to other apps (FileProvider requires the
+            grant attribute to be true regardless).
+        -->
+        <provider
+            android:name=".data.repository.OfflinePageProvider"
+            android:authorities="${applicationId}.offline"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/offline_paths" />
+        </provider>
+
+        <receiver
+            android:name=".widget.SearchWidget"
+            android:exported="false"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/search_widget_info" />
+        </receiver>
+    </application>
+</manifest>

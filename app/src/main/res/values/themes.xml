@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The window theme under Compose. It follows the system's light or dark mode (values-night),
+        which also sets the prefers-color-scheme WebView reports to pages on Android 13 and later.
+    -->
+    <style name="Theme.Hisar" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Android's splash screen, shown until the last session's tabs are restored. -->
+    <style name="Theme.Hisar.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Hisar</item>
+    </style>
+</resources>

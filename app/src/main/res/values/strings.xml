@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Hisar</string>
+    <string name="address_hint">Search or type URL</string>
+    <string name="protected_by_hisar">Protected by Hisar</string>
+    <string name="back">Back</string>
+    <string name="forward">Forward</string>
+    <string name="home">Home</string>
+    <string name="reload">Reload</string>
+    <string name="stop">Stop</string>
+    <string name="menu">More options</string>
+    <string name="clear">Clear</string>
+    <string name="refine">Edit query</string>
+    <string name="search">Search</string>
+    <string name="remove">Remove</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="always_on">Always on</string>
+
+    <!-- Menu -->
+    <string name="new_tab">New tab</string>
+    <string name="history">History</string>
+    <string name="delete_browsing_data">Delete browsing data</string>
+    <string name="delete_browsing_data_ellipsis">Delete browsing data…</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="share">Share…</string>
+    <string name="find_in_page">Find in page</string>
+    <string name="add_to_home">Add to Home screen</string>
+    <string name="desktop_site">Desktop site</string>
+    <string name="settings">Settings</string>
+    <string name="bookmark_add">Bookmark</string>
+    <string name="bookmark_remove">Edit bookmark</string>
+    <string name="page_info">View site information</string>
+
+    <!-- Snackbars -->
+    <string name="tab_closed">Tab closed</string>
+    <string name="undo">Undo</string>
+    <string name="bookmarked">Bookmarked</string>
+    <string name="bookmark_removed">Bookmark removed</string>
+    <string name="copied">Copied to clipboard</string>
+    <string name="opened_in_new_tab">Opened in new tab</string>
+    <string name="switch_to_tab">Switch</string>
+    <string name="add_to_home_unsupported">Your launcher doesn\'t support shortcuts</string>
+    <string name="data_cleared">Browsing data deleted</string>
+
+    <!-- Tabs -->
+    <string name="close_tab">Close tab</string>
+    <string name="close_all_tabs">Close all tabs</string>
+    <plurals name="tab_count">
+        <item quantity="one">%d tab</item>
+        <item quantity="other">%d tabs</item>
+    </plurals>
+
+    <!-- New tab page -->
+
+    <!-- History & bookmarks -->
+    <string name="search_history">Search your history</string>
+    <string name="history_empty">Pages you visit will appear here</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="bookmarks_empty_title">No bookmarks yet</string>
+    <string name="bookmarks_empty_body">Tap ☆ in the menu to save a page</string>
+    <string name="open_in_new_tab">Open in new tab</string>
+
+    <!-- Long-press menu -->
+    <string name="copy_link">Copy link address</string>
+    <string name="share_link">Share link</string>
+    <string name="open_image_new_tab">Open image in new tab</string>
+    <string name="copy_image">Copy image address</string>
+
+    <!-- Page info -->
+    <string name="connection_secure">Connection is secure</string>
+    <string name="connection_secure_summary">Your information (for example, passwords) is private when it is sent to this site.</string>
+    <string name="connection_insecure">Connection is not secure</string>
+    <string name="connection_insecure_summary">Don\'t enter sensitive information on this site.</string>
+    <plurals name="blocked_on_page">
+        <item quantity="one">%d ad or tracker blocked on this page</item>
+        <item quantity="other">%d ads and trackers blocked on this page</item>
+    </plurals>
+    <string name="safesearch_enforced">SafeSearch is enforced</string>
+    <string name="safesearch_enforced_summary">Explicit results are filtered on every supported search engine.</string>
+
+    <!-- Find in page -->
+    <string name="previous_match">Previous match</string>
+    <string name="next_match">Next match</string>
+
+    <!-- Delete browsing data -->
+    <string name="clear_history">Browsing history</string>
+    <string name="clear_cookies">Cookies and site data</string>
+    <string name="clear_cache">Cached images and files</string>
+    <string name="delete_data">Delete data</string>
+
+    <!-- Settings -->
+    <string name="section_basics">Basics</string>
+    <string name="search_engine">Search engine</string>
+    <string name="section_privacy">Privacy and security</string>
+    <string name="search_suggestions">Autocomplete searches and URLs</string>
+    <string name="search_suggestions_summary">Sends what you type in the address bar to your search engine</string>
+    <string name="delete_browsing_data_summary">Clear history, cookies, site data, cache</string>
+    <string name="section_accessibility">Accessibility</string>
+    <string name="text_scaling">Text scaling</string>
+    <string name="text_scaling_preview">Hisar keeps the web safe. Drag the slider until you can read this comfortably.</string>
+    <string name="section_protection">Hisar protection</string>
+    <string name="prot_safesearch">Enforced SafeSearch</string>
+    <string name="prot_safesearch_summary">Google, Bing, DuckDuckGo, Yahoo and Brave, plus YouTube Restricted Mode</string>
+    <string name="prot_ads">Ad and tracker blocker</string>
+    <string name="prot_harmful">Harmful site blocker</string>
+    <string name="prot_words">Blocked words filter</string>
+    <string name="domains_count">%1$s domains</string>
+    <string name="words_count">%1$s words and phrases</string>
+    <string name="protection_always_on">Protection is always on and can\'t be turned off.</string>
+    <string name="section_about">About Hisar</string>
+    <string name="version">Version %1$s</string>
+
+    <!-- Downloads -->
+    <string name="downloads">Downloads</string>
+    <string name="open">Open</string>
+    <string name="downloading">Downloading %1$s…</string>
+    <string name="download_complete">%1$s downloaded</string>
+    <string name="download_failed">Couldn\'t download %1$s</string>
+    <string name="download_blocked">Hisar blocked this download</string>
+    <string name="download_apk_blocked">Hisar doesn\'t download apps</string>
+    <string name="download_unsupported">This kind of download isn\'t supported</string>
+    <string name="download_needs_storage">Hisar needs storage access to save downloads</string>
+    <string name="download_cannot_open">No app can open this file</string>
+    <string name="download_link">Download link</string>
+    <string name="download_image">Download image</string>
+    <string name="downloads_empty_title">No downloads yet</string>
+    <string name="downloads_empty_body">Files you download will appear here</string>
+    <string name="download_state_failed">Download failed</string>
+    <string name="download_state_missing">File deleted</string>
+    <string name="download_state_paused">Paused · waiting for network</string>
+    <string name="download_state_pending">Starting…</string>
+    <string name="download_state_progress">%1$s of %2$s</string>
+    <string name="cancel_download">Cancel</string>
+
+    <!-- Blocked page -->
+    <string name="blocked_title">This page is blocked</string>
+    <string name="blocked_harmful">Hisar blocked this site because it is on the list of harmful sites.</string>
+    <string name="blocked_ads">Hisar blocked this site because it serves ads, trackers or malware.</string>
+    <string name="blocked_words">Hisar blocked this address because it contains blocked words.</string>
+    <string name="blocked_content">Hisar blocked this page because its content contains blocked words.</string>
+    <string name="blocked_search_engine">Hisar blocked this search engine because it cannot enforce SafeSearch on it.</string>
+    <string name="go_back">Go back</string>
+
+    <!-- Chrome features -->
+    <string name="opened_in_group">Opened in new tab in group</string>
+    <string name="voice_unavailable">Voice search isn\'t available on this device</string>
+    <string name="image_search_failed">Couldn\'t search with this image</string>
+    <string name="image_search_running">Searching with your image…</string>
+    <string name="reader_unavailable">Simplified view isn\'t available for this page</string>
+    <string name="page_save_failed">Couldn\'t save this page</string>
+    <string name="page_saved">Page saved for offline reading</string>
+    <string name="offline_label">Offline · %1$s</string>
+    <string name="voice_search">Voice search</string>
+    <string name="image_search">Search with an image</string>
+    <string name="download_page">Download page</string>
+    <string name="recent_tabs">Recent tabs</string>
+    <string name="translate">Translate…</string>
+    <string name="show_original">Show original</string>
+    <string name="simplified_view">Simplified view</string>
+    <string name="simple_mode">Simple mode</string>
+    <string name="show_group">Show group</string>
+    <string name="new_tab_in_group">New tab in group</string>
+    <string name="add_to_new_group">Add tab to new group</string>
+    <string name="add_to_group">Add to “%1$s”</string>
+    <string name="remove_from_group">Remove from group</string>
+    <string name="close_group">Close group</string>
+    <string name="ungroup">Ungroup</string>
+    <string name="open_in_group">Open in new tab in group</string>
+    <string name="search_image">Search image</string>
+    <string name="image_search_title">Search with an image</string>
+    <string name="image_search_body">Take a photo or choose one to find similar images and information. SafeSearch stays on.</string>
+    <string name="take_photo">Take a photo</string>
+    <string name="choose_image">Choose from gallery</string>
+    <string name="recent_tabs_empty">Tabs you close will appear here</string>
+    <string name="recently_closed">Recently closed</string>
+    <string name="saved_pages">Pages</string>
+    <string name="files">Files</string>
+    <string name="color_selected">Selected</string>
+    <string name="simple_mode_summary">Every page in one font and size, white text on black</string>
+    <string name="simple_mode_font">Font</string>
+    <string name="font_sans">Sans</string>
+    <string name="font_serif">Serif</string>
+    <string name="font_mono">Mono</string>
+    <string name="font_condensed">Condensed</string>
+    <string name="voice_prompt">Speak now</string>
+    <string name="widget_name">Hisar search</string>
+    <string name="widget_description">Search with Hisar from your home screen</string>
+    <string name="unnamed_group">Unnamed group</string>
+</resources>

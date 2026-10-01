@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="address_hint">Arama yapın veya URL yazın</string>
+    <string name="protected_by_hisar">Hisar koruması altında</string>
+    <string name="back">Geri</string>
+    <string name="forward">İleri</string>
+    <string name="home">Ana sayfa</string>
+    <string name="reload">Yenile</string>
+    <string name="stop">Durdur</string>
+    <string name="menu">Diğer seçenekler</string>
+    <string name="clear">Temizle</string>
+    <string name="refine">Sorguyu düzenle</string>
+    <string name="search">Ara</string>
+    <string name="remove">Kaldır</string>
+    <string name="delete">Sil</string>
+    <string name="cancel">İptal</string>
+    <string name="always_on">Her zaman açık</string>
+
+    <string name="new_tab">Yeni sekme</string>
+    <string name="history">Geçmiş</string>
+    <string name="delete_browsing_data">Tarama verilerini sil</string>
+    <string name="delete_browsing_data_ellipsis">Tarama verilerini sil…</string>
+    <string name="bookmarks">Yer işaretleri</string>
+    <string name="share">Paylaş…</string>
+    <string name="find_in_page">Sayfada bul</string>
+    <string name="add_to_home">Ana ekrana ekle</string>
+    <string name="desktop_site">Masaüstü sitesi</string>
+    <string name="settings">Ayarlar</string>
+    <string name="bookmark_add">Yer işareti ekle</string>
+    <string name="bookmark_remove">Yer işaretini düzenle</string>
+    <string name="page_info">Site bilgilerini göster</string>
+
+    <string name="tab_closed">Sekme kapatıldı</string>
+    <string name="undo">Geri al</string>
+    <string name="bookmarked">Yer işareti eklendi</string>
+    <string name="bookmark_removed">Yer işareti kaldırıldı</string>
+    <string name="copied">Panoya kopyalandı</string>
+    <string name="opened_in_new_tab">Yeni sekmede açıldı</string>
+    <string name="switch_to_tab">Geç</string>
+    <string name="add_to_home_unsupported">Başlatıcınız kısayolları desteklemiyor</string>
+    <string name="data_cleared">Tarama verileri silindi</string>
+
+    <string name="close_tab">Sekmeyi kapat</string>
+    <string name="close_all_tabs">Tüm sekmeleri kapat</string>
+    <plurals name="tab_count">
+        <item quantity="one">%d sekme</item>
+        <item quantity="other">%d sekme</item>
+    </plurals>
+
+    <string name="search_history">Geçmişte ara</string>
+    <string name="history_empty">Ziyaret ettiğiniz sayfalar burada görünür</string>
+    <string name="today">Bugün</string>
+    <string name="yesterday">Dün</string>
+    <string name="bookmarks_empty_title">Henüz yer işareti yok</string>
+    <string name="bookmarks_empty_body">Bir sayfayı kaydetmek için menüdeki ☆ simgesine dokunun</string>
+    <string name="open_in_new_tab">Yeni sekmede aç</string>
+
+    <string name="copy_link">Bağlantı adresini kopyala</string>
+    <string name="share_link">Bağlantıyı paylaş</string>
+    <string name="open_image_new_tab">Resmi yeni sekmede aç</string>
+    <string name="copy_image">Resim adresini kopyala</string>
+
+    <string name="connection_secure">Bağlantı güvenli</string>
+    <string name="connection_secure_summary">Bilgileriniz (örneğin şifreler) bu siteye gönderilirken gizli kalır.</string>
+    <string name="connection_insecure">Bağlantı güvenli değil</string>
+    <string name="connection_insecure_summary">Bu sitede hassas bilgiler girmeyin.</string>
+    <plurals name="blocked_on_page">
+        <item quantity="one">Bu sayfada %d reklam veya izleyici engellendi</item>
+        <item quantity="other">Bu sayfada %d reklam ve izleyici engellendi</item>
+    </plurals>
+    <string name="safesearch_enforced">Güvenli Arama zorunlu</string>
+    <string name="safesearch_enforced_summary">Desteklenen tüm arama motorlarında müstehcen sonuçlar filtrelenir.</string>
+
+    <string name="previous_match">Önceki eşleşme</string>
+    <string name="next_match">Sonraki eşleşme</string>
+
+    <string name="clear_history">Tarama geçmişi</string>
+    <string name="clear_cookies">Çerezler ve site verileri</string>
+    <string name="clear_cache">Önbelleğe alınan resimler ve dosyalar</string>
+    <string name="delete_data">Verileri sil</string>
+
+    <string name="section_basics">Temel bilgiler</string>
+    <string name="search_engine">Arama motoru</string>
+    <string name="section_privacy">Gizlilik ve güvenlik</string>
+    <string name="search_suggestions">Aramaları ve URL\'leri otomatik tamamla</string>
+    <string name="search_suggestions_summary">Adres çubuğuna yazdıklarınızı arama motorunuza gönderir</string>
+    <string name="delete_browsing_data_summary">Geçmişi, çerezleri, site verilerini ve önbelleği temizler</string>
+    <string name="section_accessibility">Erişilebilirlik</string>
+    <string name="text_scaling">Metin ölçekleme</string>
+    <string name="text_scaling_preview">Hisar web\'i güvenli tutar. Bu metni rahatça okuyana kadar kaydırıcıyı sürükleyin.</string>
+    <string name="section_protection">Hisar koruması</string>
+    <string name="prot_safesearch">Zorunlu Güvenli Arama</string>
+    <string name="prot_safesearch_summary">Google, Bing, DuckDuckGo, Yahoo ve Brave ile YouTube Kısıtlı Mod</string>
+    <string name="prot_ads">Reklam ve izleyici engelleyici</string>
+    <string name="prot_harmful">Zararlı site engelleyici</string>
+    <string name="prot_words">Engellenen kelime filtresi</string>
+    <string name="domains_count">%1$s alan adı</string>
+    <string name="words_count">%1$s kelime ve ifade</string>
+    <string name="protection_always_on">Koruma her zaman açıktır ve kapatılamaz.</string>
+    <string name="section_about">Hisar hakkında</string>
+    <string name="version">Sürüm %1$s</string>
+
+    <string name="downloads">İndirilenler</string>
+    <string name="open">Aç</string>
+    <string name="downloading">%1$s indiriliyor…</string>
+    <string name="download_complete">%1$s indirildi</string>
+    <string name="download_failed">%1$s indirilemedi</string>
+    <string name="download_blocked">Hisar bu indirmeyi engelledi</string>
+    <string name="download_apk_blocked">Hisar uygulama indirmez</string>
+    <string name="download_unsupported">Bu tür indirme desteklenmiyor</string>
+    <string name="download_needs_storage">Hisar\'ın indirmeleri kaydetmek için depolama iznine ihtiyacı var</string>
+    <string name="download_cannot_open">Bu dosyayı açabilecek uygulama yok</string>
+    <string name="download_link">Bağlantıyı indir</string>
+    <string name="download_image">Resmi indir</string>
+    <string name="downloads_empty_title">Henüz indirme yok</string>
+    <string name="downloads_empty_body">İndirdiğiniz dosyalar burada görünür</string>
+    <string name="download_state_failed">İndirme başarısız oldu</string>
+    <string name="download_state_missing">Dosya silindi</string>
+    <string name="download_state_paused">Duraklatıldı · ağ bekleniyor</string>
+    <string name="download_state_pending">Başlatılıyor…</string>
+    <string name="download_state_progress">%1$s / %2$s</string>
+    <string name="cancel_download">İptal et</string>
+
+    <string name="blocked_title">Bu sayfa engellendi</string>
+    <string name="blocked_harmful">Hisar bu siteyi zararlı siteler listesinde olduğu için engelledi.</string>
+    <string name="blocked_ads">Hisar bu siteyi reklam, izleyici veya kötü amaçlı yazılım sunduğu için engelledi.</string>
+    <string name="blocked_words">Hisar bu adresi engellenen kelimeler içerdiği için engelledi.</string>
+    <string name="blocked_content">Hisar bu sayfayı içeriğinde engellenen kelimeler olduğu için engelledi.</string>
+    <string name="blocked_search_engine">Hisar bu arama motorunda Güvenli Arama\'yı zorunlu kılamadığı için onu engelledi.</string>
+    <string name="go_back">Geri dön</string>
+
+    <!-- Chrome features -->
+    <string name="opened_in_group">Gruptaki yeni sekmede açıldı</string>
+    <string name="voice_unavailable">Bu cihazda sesli arama kullanılamıyor</string>
+    <string name="image_search_failed">Bu resimle arama yapılamadı</string>
+    <string name="image_search_running">Resminizle aranıyor…</string>
+    <string name="reader_unavailable">Bu sayfa için basitleştirilmiş görünüm yok</string>
+    <string name="page_save_failed">Sayfa kaydedilemedi</string>
+    <string name="page_saved">Sayfa çevrimdışı okumak için kaydedildi</string>
+    <string name="offline_label">Çevrimdışı · %1$s</string>
+    <string name="voice_search">Sesli arama</string>
+    <string name="image_search">Resimle ara</string>
+    <string name="download_page">Sayfayı indir</string>
+    <string name="recent_tabs">Son sekmeler</string>
+    <string name="translate">Çevir…</string>
+    <string name="show_original">Orijinali göster</string>
+    <string name="simplified_view">Basitleştirilmiş görünüm</string>
+    <string name="simple_mode">Sade mod</string>
+    <string name="show_group">Grubu göster</string>
+    <string name="new_tab_in_group">Grupta yeni sekme</string>
+    <string name="add_to_new_group">Sekmeyi yeni gruba ekle</string>
+    <string name="add_to_group">“%1$s” grubuna ekle</string>
+    <string name="remove_from_group">Gruptan çıkar</string>
+    <string name="close_group">Grubu kapat</string>
+    <string name="ungroup">Grubu dağıt</string>
+    <string name="open_in_group">Gruptaki yeni sekmede aç</string>
+    <string name="search_image">Resmi ara</string>
+    <string name="image_search_title">Resimle ara</string>
+    <string name="image_search_body">Benzer resimler ve bilgi bulmak için fotoğraf çekin veya seçin. Güvenli Arama açık kalır.</string>
+    <string name="take_photo">Fotoğraf çek</string>
+    <string name="choose_image">Galeriden seç</string>
+    <string name="recent_tabs_empty">Kapattığınız sekmeler burada görünür</string>
+    <string name="recently_closed">Son kapatılanlar</string>
+    <string name="saved_pages">Sayfalar</string>
+    <string name="files">Dosyalar</string>
+    <string name="color_selected">Seçili</string>
+    <string name="simple_mode_summary">Tüm sayfalar tek yazı tipi ve boyutta, siyah üzerine beyaz</string>
+    <string name="simple_mode_font">Yazı tipi</string>
+    <string name="font_sans">Sans</string>
+    <string name="font_serif">Serif</string>
+    <string name="font_mono">Mono</string>
+    <string name="font_condensed">Dar</string>
+    <string name="voice_prompt">Şimdi konuşun</string>
+    <string name="widget_name">Hisar arama</string>
+    <string name="widget_description">Ana ekranınızdan Hisar ile arayın</string>
+    <string name="unnamed_group">Adsız grup</string>
+</resources>

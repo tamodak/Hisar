@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A shield with a check mark: Hisar ("fortress") guarding the page. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 L76,36 L76,52 C76,66 66.5,77 54,81 C41.5,77 32,66 32,52 L32,36 Z" />
+    <path
+        android:strokeColor="#1F4FBF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M44,54 L51,61 L65,46" />
+</vector>
