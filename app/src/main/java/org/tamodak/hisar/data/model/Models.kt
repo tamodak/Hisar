@@ -55,3 +55,21 @@ data class UserSettings(
     /** Most-visited tiles the user removed from the new tab page. */
     val hiddenTiles: Set<String> = emptySet(),
 )
+
+/** A tile on the new tab page. [pinned] tiles were saved by the user and stay put. */
+data class Shortcut(val title: String, val url: String, val pinned: Boolean = false)
+
+/**
+ * The new tab page's tiles before Hisar knows the user's own most-visited sites. They give way to
+ * those as browsing history builds up, and the user can edit, pin or remove any of them.
+ */
+val DefaultShortcuts = listOf(
+    Shortcut("YouTube", "https://www.youtube.com/"),
+    Shortcut("Instagram", "https://www.instagram.com/"),
+    Shortcut("Amazon", "https://www.amazon.com/"),
+    Shortcut("Wikipedia", "https://www.wikipedia.org/"),
+    Shortcut("Facebook", "https://www.facebook.com/"),
+    Shortcut("X", "https://x.com/"),
+    Shortcut("Netflix", "https://www.netflix.com/"),
+    Shortcut("Spotify", "https://open.spotify.com/"),
+)

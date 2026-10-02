@@ -16,7 +16,9 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.webkit.ServiceWorkerClientCompat
 import androidx.webkit.ServiceWorkerControllerCompat
+import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import org.tamodak.hisar.filter.BlockReason
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.tamodak.hisar.data.repository.FilterRepository
@@ -35,7 +37,12 @@ class WebViewFactory(
     }
 
     @SuppressLint("SetJavaScriptEnabled") // The modern web does not work without it.
-    fun create(tabId: Long, desktopMode: Boolean, textZoom: Int): WebView = WebView(context).apply {
+    fun create(tabId: Long, desktopMode: Boolean, textZoom: Int): WebView = GuardedWebView(
+        context,
+        filters,
+        onBlocked = { callbacks.onNavigationBlocked(tabId, BlockReason.BLOCKED_WORDS) },
+    ).apply {
+        listenToPageGuard(this, tabId)
         settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -66,6 +73,24 @@ class WebViewFactory(
         }
         setOnScrollChangeListener { _, _, y, _, oldY -> callbacks.onScroll(tabId, y, oldY) }
         setOnLongClickListener { onLongPress(this) }
+    }
+
+    /**
+     * The in-page guard (see [PageGuardScript]) reports what it stopped here. A
+     * WebMessageListener, unlike a JavaScript interface, exposes nothing callable to pages.
+     */
+    private fun listenToPageGuard(view: WebView, tabId: Long) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
+        WebViewCompat.addWebMessageListener(view, PageGuardScript.CHANNEL, setOf("*")) { _, _, _, _, _ ->
+            callbacks.onNavigationBlocked(tabId, BlockReason.BLOCKED_WORDS)
+        }
+    }
+
+    /** Installs the page guard to run before every page's own scripts, in every frame. */
+    fun installPageGuard(view: WebView, script: String) {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(view, script, setOf("*"))
+        }
     }
 
     private fun onLongPress(view: WebView): Boolean {

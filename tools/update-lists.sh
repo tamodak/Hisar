@@ -9,6 +9,11 @@
 # does no parsing beyond reading lines.
 set -euo pipefail
 
+# --words-only rebuilds just the word lists (after editing extra-words.txt or
+# search-only-words.txt) without refreshing the domain lists.
+WORDS_ONLY=false
+[ "${1:-}" = "--words-only" ] && WORDS_ONLY=true
+
 cd "$(dirname "$0")/.."
 OUT=app/src/main/assets/lists
 mkdir -p "$OUT"
@@ -24,6 +29,16 @@ hosts_to_domains() {
         | sort -u
 }
 
+normalize_words() {
+    grep -vE '^[[:space:]]*(#|$)' | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g' | grep -v '^$' | sort -u
+}
+
+# Drops tools/word-exceptions.txt: words that collide with everyday words in another language.
+drop_exceptions() {
+    grep -vxF -f <(normalize_words < tools/word-exceptions.txt)
+}
+
+if ! $WORDS_ONLY; then
 echo "Ads & malware (StevenBlack unified hosts)…"
 curl -fsSL "$STEVENBLACK/hosts" | hosts_to_domains > "$OUT/ads.txt"
 
@@ -32,6 +47,7 @@ echo "Harmful sites (StevenBlack porn + gambling extensions)…"
     curl -fsSL "$STEVENBLACK/alternates/porn-only/hosts"
     curl -fsSL "$STEVENBLACK/alternates/gambling-only/hosts"
 } | hosts_to_domains > "$OUT/harmful.txt"
+fi
 
 echo "Blocked words (LDNOOBW en + tr) and local additions…"
 {
@@ -41,6 +57,12 @@ echo "Blocked words (LDNOOBW en + tr) and local additions…"
     echo
     # Hisar's own additions, one per line; lines starting with # are comments.
     grep -vE '^[[:space:]]*(#|$)' tools/extra-words.txt || true
-} | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g' | grep -v '^$' | sort -u > "$OUT/words.txt"
+} | normalize_words | drop_exceptions > "$OUT/words.txt"
+
+echo "Search-only words (blocked in searches, not counted on pages)…"
+normalize_words < tools/search-only-words.txt | drop_exceptions > "$OUT/search_words.txt"
+
+echo "Looser matching rules, where a dictionary shows they are safe…"
+python3 tools/derive_word_rules.py "$OUT"
 
 wc -l "$OUT"/*.txt

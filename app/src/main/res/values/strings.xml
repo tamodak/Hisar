@@ -188,4 +188,13 @@
     <string name="widget_name">Hisar search</string>
     <string name="widget_description">Search with Hisar from your home screen</string>
     <string name="unnamed_group">Unnamed group</string>
+    <string name="edit">Edit</string>
+    <string name="edit_shortcut">Edit shortcut</string>
+    <string name="shortcut_name">Name</string>
+    <string name="shortcut_url">URL</string>
+    <string name="shortcut_url_invalid">Enter a web address</string>
+    <string name="save">Save</string>
+    <string name="search_blocked">Hisar didn\'t send this: it contains blocked words</string>
+    <string name="site_blocked">Hisar blocked this site</string>
+    <string name="search_engine_blocked">Hisar can\'t enforce SafeSearch on this search engine</string>
 </resources>

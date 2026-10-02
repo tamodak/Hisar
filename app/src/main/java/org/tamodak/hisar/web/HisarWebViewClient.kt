@@ -52,6 +52,19 @@ internal class HisarWebViewClient(
      */
     private val intercepted = Collections.synchronizedSet(LinkedHashSet<String>())
 
+    /**
+     * Pages this tab blocked for their content. Back and Reload must not show them again, so they
+     * are answered with the block page — in this tab only, and until the user opens the address
+     * again on purpose ([forget]), since a site can show something else next time.
+     */
+    private val contentBlocked = Collections.synchronizedSet(HashSet<String>())
+
+    fun isContentBlocked(url: String) = url.substringBefore('#') in contentBlocked
+
+    fun forget(url: String) {
+        contentBlocked -= url.substringBefore('#')
+    }
+
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         // Saved pages come from Hisar's own FileProvider; any other content: URL is refused.
         if (request.url.scheme == "content") {
@@ -60,6 +73,7 @@ internal class HisarWebViewClient(
 
         val url = request.url.toString()
         val mainFrame = request.isForMainFrame
+        if (mainFrame && isContentBlocked(url)) return BlockedPage.response(view.context, BlockReason.PAGE_CONTENT, "")
         if (mainFrame) remember(url)
         val guard = filters.guardBlocking()
         val decision = if (mainFrame) guard.checkNavigation(url) else guard.checkSubresource(url)
@@ -87,14 +101,28 @@ internal class HisarWebViewClient(
             // A page's own search link or form without strict SafeSearch is rewritten before it is
             // sent. Letting it go out and redirecting afterwards costs a duplicate request, which
             // Google answers with an "unusual traffic" CAPTCHA.
+            //
+            // A link, form or redirect to anything Hisar blocks is cancelled here, so the request
+            // never leaves the phone and no block page lands in the tab's history.
             "http", "https" -> {
-                val strict = if (request.isForMainFrame && request.method == "GET") {
-                    filters.guardOrNull?.checkNavigation(uri.toString()) as? Decision.Redirect
-                } else {
-                    null
+                if (!request.isForMainFrame) return false
+                when (val decision = filters.guardOrNull?.checkNavigation(uri.toString())) {
+                    is Decision.Block -> {
+                        Log.i(TAG, "Cancelled navigation (${decision.reason}): ${uri.host}")
+                        callbacks.onNavigationBlocked(tabId, decision.reason)
+                        true
+                    }
+                    is Decision.Redirect -> {
+                        if (request.method == "GET") view.loadUrl(decision.url)
+                        request.method == "GET"
+                    }
+                    else -> false
                 }
-                if (strict != null) view.loadUrl(strict.url)
-                strict != null
+            }
+            // The block page's own "Go back" button.
+            "hisar" -> {
+                if (uri.host == "back") callbacks.onBlockedPageBack(tabId)
+                true
             }
             "about" -> false
             // Handing off to the dialler or mail app is harmless, but only on a real tap.
@@ -168,9 +196,10 @@ internal class HisarWebViewClient(
             scope.launch {
                 val blocked = withContext(scanDispatcher) { filters.guard().checkPageText(url, text) is Decision.Block }
                 if (blocked && view.url == url) {
+                    contentBlocked += url.substringBefore('#')
                     Log.i(TAG, "Blocked by page content: ${url.toUri().host}")
-                    // checkPageText has recorded the URL, so this load is answered with the
-                    // blocked page — and so is any later visit, including via the back button.
+                    // Recorded above, so this load is answered with the block page, and so is any
+                    // return to it in this tab.
                     view.loadUrl(url)
                 }
             }

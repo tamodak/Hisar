@@ -22,5 +22,14 @@ class WordFilterTest {
         assertEquals(listOf("göt"), filter.findMatches("göt"))
     }
 
+    @Test fun turkishEndingsAndJoinedNames() {
+        val f = WordFilter(listOf("femboy", "lesbian", "gay"), substringWords = listOf("lesbian", "femboy"), suffixStems = listOf("femboy", "lesbian"))
+        assertEquals(listOf("femboy"), f.findMatches("bir femboyun olması"))
+        assertEquals(listOf("lesbian"), f.findMatches("r/actuallesbians"))
+        assertEquals(listOf("lesbian"), f.findMatches("LesbianActually"))
+        // Words without a safe rule stay whole-word: "gayet" (quite) is not "gay".
+        assertTrue(f.findMatches("gayet iyi").isEmpty())
+    }
+
     @Test fun matchesSymbolEntries() = assertEquals(listOf("🖕"), filter.findMatches("hey 🖕"))
 }

@@ -1,5 +1,6 @@
 package org.tamodak.hisar.data.local
 
+import androidx.room.AutoMigration
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
@@ -23,8 +24,12 @@ import kotlinx.coroutines.flow.Flow
         DownloadEntity::class,
         TabEntity::class,
         TabGroupEntity::class,
+        ShortcutEntity::class,
     ],
-    version = 1,
+    version = 2,
+    // Version 2 added the new tab page's pinned shortcuts; Room writes the migration from the
+    // exported schemas.
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 abstract class HisarDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
@@ -33,6 +38,7 @@ abstract class HisarDatabase : RoomDatabase() {
     abstract fun offlinePageDao(): OfflinePageDao
     abstract fun downloadDao(): DownloadDao
     abstract fun tabDao(): TabDao
+    abstract fun shortcutDao(): ShortcutDao
 }
 
 // --- History ------------------------------------------------------------------------------------
@@ -246,4 +252,33 @@ interface TabDao {
         insertGroups(groups)
         insertTabs(tabs)
     }
+}
+
+// --- New tab page shortcuts ---------------------------------------------------------------------
+
+/** A shortcut the user pinned to the new tab page by editing it. */
+@Entity(tableName = "shortcuts")
+data class ShortcutEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val url: String,
+    val position: Int,
+)
+
+@Dao
+interface ShortcutDao {
+    @Query("SELECT * FROM shortcuts ORDER BY position")
+    fun observeAll(): Flow<List<ShortcutEntity>>
+
+    @Query("SELECT * FROM shortcuts WHERE url = :url LIMIT 1")
+    suspend fun byUrl(url: String): ShortcutEntity?
+
+    @Query("SELECT COALESCE(MAX(position), -1) FROM shortcuts")
+    suspend fun lastPosition(): Int
+
+    @Upsert
+    suspend fun upsert(shortcut: ShortcutEntity)
+
+    @Query("DELETE FROM shortcuts WHERE url = :url")
+    suspend fun delete(url: String)
 }

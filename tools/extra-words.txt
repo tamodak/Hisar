@@ -1,10 +1,345 @@
 # Hisar's own additions to the blocked-words list, merged in by update-lists.sh.
-# One word or phrase per line, matched as whole words (case-insensitive).
+#
+# Words here block searches and addresses that contain them, and count towards blocking a page
+# by its content. Words with a common innocent meaning belong in search-only-words.txt instead.
+# One word or phrase per line, matched as whole words, case-insensitive. Turkish words are listed
+# with and without Turkish letters, since both are typed.
+
+# --- English: sexuality and sexual content ---------------------------------------------------
 porn
 porno
+porns
+pornography
+pornographic
 xxx
 nsfw
-hentai
 nude
 nudes
+nudity
+naked
+topless
+sex
+sexy
+sexual
+sexuality
+sexting
+sext
+erotic
+erotica
+erotik
+hardcore
+softcore
+lesbian
+lesbians
+lesbo
+lesbos
+gay
+gays
+gay sex
+homosexual
+homosexuals
+bisexual
+bisexuals
+transsexual
+shemale
+shemales
+tranny
+ladyboy
+ladyboys
+femboy
+femboys
+queer
+lgbt
+lgbtq
+lgbtqia
+milf
+milfs
+gilf
+dilf
+hentai
+ecchi
+rule34
+yaoi
+yuri
+futanari
+futa
+doujin
+doujinshi
 onlyfans
+fansly
+chaturbate
+xvideos
+xhamster
+pornhub
+redtube
+youporn
+brazzers
+xnxx
+camgirl
+camgirls
+cam girl
+webcam sex
+sex cam
+striptease
+stripper
+strippers
+strip club
+lapdance
+lap dance
+hooker
+hookers
+prostitute
+prostitutes
+prostitution
+brothel
+call girl
+sugar daddy
+sugar baby
+hookup
+one night stand
+swinger
+swingers
+cuckold
+hotwife
+kinky
+fetish
+fetishes
+bdsm
+bondage
+dominatrix
+orgy
+orgies
+threesome
+foursome
+gangbang
+gang bang
+creampie
+cumshot
+blowjob
+blowjobs
+handjob
+footjob
+rimjob
+deepthroat
+deep throat
+anal
+anal sex
+oral sex
+sex position
+sex positions
+missionary position
+doggy style
+doggystyle
+reverse cowgirl
+sixty nine
+scissoring
+tribbing
+masturbate
+masturbating
+masturbation
+jerk off
+jerking off
+wank
+wanking
+fap
+fapping
+horny
+orgasm
+orgasms
+ejaculate
+ejaculation
+penis
+vagina
+pussy
+dildo
+dildos
+vibrator
+sex toy
+sex toys
+fleshlight
+stepmom
+step mom
+stepsister
+step sister
+stepsis
+stepbro
+incest
+voyeur
+upskirt
+downblouse
+leaked nudes
+sextape
+sex tape
+sex video
+sex videos
+playboy
+kamasutra
+squirting
+pegging
+bareback
+gloryhole
+glory hole
+nipple
+nipples
+boobs
+tits
+titties
+booty call
+twerk
+twerking
+lingerie
+thong
+panties
+
+# --- Turkish ----------------------------------------------------------------------------------
+seks
+seksi
+sex izle
+seks izle
+seks videosu
+seks videoları
+seks videolari
+seks filmi
+porno izle
+porno film
+porno filmi
+pornografi
+erotik film
+erotik video
+çıplak
+ciplak
+çıplak kadın
+ciplak kadin
+çıplak fotoğraf
+ciplak fotograf
+lezbiyen
+lezbiyenler
+lezbo
+gey
+geyler
+eşcinsel
+escinsel
+eşcinseller
+escinseller
+biseksüel
+biseksuel
+travesti
+travestiler
+transseksüel
+transseksuel
+ibne
+ifşa
+ifsa
+ifşalar
+ifsalar
+ifşa video
+ifsa video
+türbanlı ifşa
+turbanli ifsa
+turbanice
+türbanice
+sakso
+saksocu
+sakso çeken
+sakso ceken
+oral seks
+anal seks
+grup seks
+grupseks
+sikiş
+sikis
+sikişme
+sikisme
+sikiş izle
+sikis izle
+sikmek
+sikiyor
+siktir
+yarak
+yarrak
+amcık
+amcik
+amını
+amini
+göt
+göt deliği
+got deligi
+götten
+kaltak
+orospu
+fahişe
+fahise
+eskort
+kerhane
+genelev
+mastürbasyon
+masturbasyon
+otuzbir
+otuz bir çekmek
+otuzbir çekmek
+orgazm
+orgazmlar
+azgın kadın
+azgin kadin
+ensest
+domalma
+domalmış
+domalmis
+domal
+sevişme
+sevisme
+sevişen
+sevisen
+seks pozisyonu
+seks pozisyonları
+seks pozisyonlari
+sex pozisyonları
+yatak pozisyonları
+yetişkin film
+yetiskin film
+yetişkin video
+yetiskin video
++18 video
+18 yaş üstü
+liseli ifşa
+liseli ifsa
+liseli seks
+çıtır kız
+citir kiz
+üvey anne seks
+uvey anne seks
+am resmi
+am resimleri
+am fotoğrafı
+am fotografi
+am yalama
+am videosu
+am görüntüsü
+am goruntusu
+
+# --- Forms of blocked words (also lets their roots match inside joined-up names) ---------------
+lesbianism
+bisexuality
+homosexuality
+heterosexual
+heterosexuals
+heterosexuality
+asexual
+eroticism
+erotically
+fetishism
+fetishist
+fetishistic
+fetishists
+orgasmic
+voyeurism
+voyeuristic
+nymphomaniac
+nymphomaniacs
+incestuous
+masturbated
+ejaculated
+vaginal
+vaginae
+sensuality
+motherfucking

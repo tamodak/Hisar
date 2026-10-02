@@ -174,4 +174,13 @@
     <string name="widget_name">Hisar arama</string>
     <string name="widget_description">Ana ekranınızdan Hisar ile arayın</string>
     <string name="unnamed_group">Adsız grup</string>
+    <string name="edit">Düzenle</string>
+    <string name="edit_shortcut">Kısayolu düzenle</string>
+    <string name="shortcut_name">Ad</string>
+    <string name="shortcut_url">URL</string>
+    <string name="shortcut_url_invalid">Bir web adresi girin</string>
+    <string name="save">Kaydet</string>
+    <string name="search_blocked">Hisar bunu göndermedi: engellenen kelimeler içeriyor</string>
+    <string name="site_blocked">Hisar bu siteyi engelledi</string>
+    <string name="search_engine_blocked">Hisar bu arama motorunda Güvenli Arama\'yı zorunlu kılamıyor</string>
 </resources>

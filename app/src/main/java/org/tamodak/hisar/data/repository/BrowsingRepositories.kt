@@ -9,9 +9,12 @@ import org.tamodak.hisar.data.local.ClosedTabDao
 import org.tamodak.hisar.data.local.ClosedTabEntity
 import org.tamodak.hisar.data.local.HistoryDao
 import org.tamodak.hisar.data.local.HistoryEntity
+import org.tamodak.hisar.data.local.ShortcutDao
+import org.tamodak.hisar.data.local.ShortcutEntity
 import org.tamodak.hisar.data.model.Bookmark
 import org.tamodak.hisar.data.model.ClosedTab
 import org.tamodak.hisar.data.model.HistoryEntry
+import org.tamodak.hisar.data.model.Shortcut
 import org.tamodak.hisar.search.SearchEngine
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -110,4 +113,26 @@ class RecentTabsRepository @Inject constructor(private val dao: ClosedTabDao) {
     private companion object {
         const val MAX = 25
     }
+}
+
+/** Shortcuts the user pinned to the new tab page, in their order. */
+@Singleton
+class ShortcutRepository @Inject constructor(private val dao: ShortcutDao) {
+
+    val pinned: Flow<List<Shortcut>> = dao.observeAll().map { list -> list.map { Shortcut(it.title, it.url, pinned = true) } }
+
+    /**
+     * Saves an edited shortcut as pinned. Editing a pinned one updates it in place; editing any
+     * other tile pins it at the end.
+     */
+    suspend fun pin(title: String, url: String, replacing: String?) {
+        val existing = replacing?.let { dao.byUrl(it) } ?: dao.byUrl(url)
+        if (existing != null) {
+            dao.upsert(existing.copy(title = title, url = url))
+        } else {
+            dao.upsert(ShortcutEntity(title = title, url = url, position = dao.lastPosition() + 1))
+        }
+    }
+
+    suspend fun unpin(url: String) = dao.delete(url)
 }

@@ -64,6 +64,7 @@ object AppModule {
     @Provides fun offlinePageDao(db: HisarDatabase) = db.offlinePageDao()
     @Provides fun downloadDao(db: HisarDatabase) = db.downloadDao()
     @Provides fun tabDao(db: HisarDatabase) = db.tabDao()
+    @Provides fun shortcutDao(db: HisarDatabase) = db.shortcutDao()
 
     @Provides
     @Singleton

@@ -36,11 +36,15 @@ class GuardTest {
     @Test fun backgroundSearchWithoutSafeSearchIsDropped() =
         assertEquals(BlockReason.UNSAFE_SEARCH_ENGINE, reason(guard.checkSubresource("https://www.google.com/search?q=x&async=1")))
 
-    @Test fun pageTextNeedsSeveralHitsAndIsRemembered() {
+    @Test fun pageTextNeedsSeveralHits() {
         assertEquals(Decision.Allow, guard.checkPageText("https://news.example/a", "An article that mentions sex education once."))
-        val url = "https://example.org/page"
-        assertTrue(guard.checkPageText(url, "porn sex nude") is Decision.Block)
-        assertEquals(BlockReason.PAGE_CONTENT, reason(guard.checkNavigation("$url#frag")))
+        assertTrue(guard.checkPageText("https://example.org/page", "porn sex nude") is Decision.Block)
+    }
+
+    @Test fun aSiteBlockedForWhatItShowedOnceIsNotBlockedEverywhere() {
+        // A single-page app's home showing results it shouldn't: the tab blocks it, not the filter.
+        guard.checkPageText("https://m.youtube.com/", "porn sex nude")
+        assertEquals(Decision.Allow, guard.checkNavigation("https://m.youtube.com/"))
     }
 
     @Test fun translateProxyCannotReachBlockedSites() {
@@ -52,6 +56,40 @@ class GuardTest {
             reason(guard.checkNavigation("https://translate.google.com/translate?sl=auto&tl=tr&u=https%3A%2F%2Fbadsite.com%2F")),
         )
         assertEquals(Decision.Allow, guard.checkNavigation("https://en-wikipedia-org.translate.goog/wiki/Ankara"))
+    }
+
+    @Test fun typedWordsInBackgroundRequestsNeverLeave() {
+        // Google's suggestions as you type, and instant results.
+        assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkSubresource("https://www.google.com/complete/s?q=nude&cp=4&client=mobile-gws-wiz-hp")))
+        assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkSubresource("https://www.google.com/complete/s?q=n&pq=nude")))
+        assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkSubresource("https://suggestqueries.google.com/complete/search?client=firefox&q=free+porn")))
+        assertEquals(Decision.Allow, guard.checkSubresource("https://www.google.com/complete/s?q=kittens"))
+        // Words elsewhere in an asset URL are left alone.
+        assertEquals(Decision.Allow, guard.checkSubresource("https://cdn.example.com/sex-ed/book.png?id=nude123"))
+    }
+
+    @Test fun searchesInsideJsonParametersAreChecked() {
+        val graphQl = "https://x.com/i/api/graphql/abc/SearchTimeline?variables=" +
+            java.net.URLEncoder.encode("""{"rawQuery":"free porn","count":20}""", "UTF-8")
+        assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkSubresource(graphQl)))
+        val clean = "https://x.com/i/api/graphql/abc/SearchTimeline?variables=" +
+            java.net.URLEncoder.encode("""{"rawQuery":"kittens","product":"Top"}""", "UTF-8")
+        assertEquals(Decision.Allow, guard.checkSubresource(clean))
+    }
+
+    @Test fun searchBlockedForItsResultsStaysBlockedUnderAnyAddress() {
+        guard.checkPageText("https://www.google.com/search?q=badquery&safe=active&sei=abc", "porn sex nude")
+        assertEquals(BlockReason.PAGE_CONTENT, reason(guard.checkNavigation("https://www.google.com/search?q=badquery&safe=active")))
+        assertEquals(BlockReason.PAGE_CONTENT, reason(guard.checkNavigation("https://www.google.com/search?q=BadQuery&safe=active&ei=xyz")))
+    }
+
+    @Test fun searchOnlyWordsStopSearchesButDontBlockPages() {
+        val guard = Guard(DomainList(emptyList()), DomainList(emptyList()), WordFilter(listOf("porn")), WordFilter(listOf("olgun")))
+        assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkNavigation("https://www.google.com/search?q=olgun+kadin")))
+        assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkSubresource("https://www.google.com/complete/s?q=olgun")))
+        assertTrue(!guard.isClean("olgun"))
+        // A recipe that says "olgun" often is still a recipe.
+        assertEquals(Decision.Allow, guard.checkPageText("https://recipes.example/domates", "olgun olgun olgun olgun olgun olgun domates"))
     }
 
     @Test fun nonHttpSchemesAreNotFiltered() = assertEquals(Decision.Allow, guard.checkNavigation("about:blank"))

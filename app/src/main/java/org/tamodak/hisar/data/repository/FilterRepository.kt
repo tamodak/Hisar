@@ -34,8 +34,12 @@ class FilterRepository @Inject constructor(
         val assets = context.assets
         val ads = assets.open("lists/ads.txt").use(DomainList::load)
         val harmful = assets.open("lists/harmful.txt").use(DomainList::load)
-        val words = assets.open("lists/words.txt").use(WordFilter::load)
-        Guard(ads, harmful, words).also {
+        fun lines(name: String) = assets.open("lists/$name").use(WordFilter::readLines)
+        val substring = lines("substring_words.txt")
+        val stems = lines("suffix_stems.txt")
+        val words = WordFilter(lines("words.txt"), substring, stems)
+        val searchOnlyWords = WordFilter(lines("search_words.txt"), substring, stems)
+        Guard(ads, harmful, words, searchOnlyWords).also {
             loaded = it
             Log.i(TAG, "Lists loaded in ${System.currentTimeMillis() - start} ms: ${ads.size} ad/tracker, ${harmful.size} harmful domains")
         }

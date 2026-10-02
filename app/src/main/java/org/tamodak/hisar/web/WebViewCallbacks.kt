@@ -6,6 +6,7 @@ import android.view.View
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import org.tamodak.hisar.filter.BlockReason
 
 /** A long-pressed link or image. */
 data class LinkTarget(val link: String?, val image: String?)
@@ -36,6 +37,15 @@ interface WebViewCallbacks {
     fun onShowFullscreen(view: View, callback: WebChromeClient.CustomViewCallback)
     fun onHideFullscreen()
     fun onShowFileChooser(callback: ValueCallback<Array<Uri>>, params: WebChromeClient.FileChooserParams): Boolean
+
+    /**
+     * Hisar stopped something before it left the phone: a page's link, form or search with a
+     * blocked word or to a blocked site, or a request the in-page guard refused.
+     */
+    fun onNavigationBlocked(tabId: Long, reason: BlockReason)
+
+    /** The block page's "Go back" button. */
+    fun onBlockedPageBack(tabId: Long)
 
     /** The tab's renderer died. The WebView is unusable and must be replaced. */
     fun onRendererGone(tabId: Long, view: WebView)

@@ -49,7 +49,11 @@ import org.tamodak.hisar.data.model.UserSettings
 import org.tamodak.hisar.data.repository.FilterRepository
 import org.tamodak.hisar.data.repository.OfflinePageRepository
 import org.tamodak.hisar.web.LinkTarget
+import org.tamodak.hisar.filter.BlockReason
+import org.tamodak.hisar.filter.Decision
+import org.tamodak.hisar.web.HisarWebViewClient
 import org.tamodak.hisar.web.PageStyles
+import org.tamodak.hisar.web.PageGuardScript
 import org.tamodak.hisar.web.WebViewCallbacks
 import org.tamodak.hisar.web.WebViewFactory
 
@@ -75,7 +79,7 @@ interface SystemLaunchers {
 class BrowserController(
     private val activity: ComponentActivity,
     val viewModel: BrowserViewModel,
-    filters: FilterRepository,
+    private val filters: FilterRepository,
     private val launchers: SystemLaunchers,
 ) : WebViewCallbacks {
 
@@ -86,6 +90,8 @@ class BrowserController(
      */
     private val webViews = mutableStateMapOf<Long, WebView>()
     private val simpleModeScripts = HashMap<Long, ScriptHandler>()
+    /** The in-page guard, built once the word list is loaded. */
+    private var pageGuardScript: String? = null
     private var settings = UserSettings()
     private var currentTabId: Long? = null
 
@@ -121,6 +127,12 @@ class BrowserController(
     private val density = activity.resources.displayMetrics.density
 
     init {
+        activity.lifecycleScope.launch {
+            val script = PageGuardScript.build(filters.guard())
+            pageGuardScript = script
+            // WebViews created while the list was loading get it now.
+            webViews.values.forEach { factory.installPageGuard(it, script) }
+        }
         // Follow the ViewModel's state while the activity is visible, as the lifecycle guidance
         // recommends: WebViews are created, loaded and released to match the tabs.
         activity.lifecycleScope.launch {
@@ -150,6 +162,8 @@ class BrowserController(
             val url = tab.pendingLoad ?: continue
             val view = if (tab.id == current?.id && !tab.showNewTabPage) webViewFor(tab) else webViews[tab.id] ?: continue
             viewModel.onPendingLoadConsumed(tab.id)
+            // Opened on purpose: a page this tab blocked for its content gets a fresh look.
+            (view.webViewClient as? HisarWebViewClient)?.forget(url)
             // Saved pages need content access, for this load only (see HisarWebViewClient.onPageStarted).
             if (OfflinePageRepository.isOfflineUrl(activity, url)) view.settings.allowContentAccess = true
             view.loadUrl(url)
@@ -157,7 +171,10 @@ class BrowserController(
     }
 
     private fun webViewFor(tab: TabState): WebView = webViews.getOrPut(tab.id) {
-        factory.create(tab.id, tab.desktopMode, settings.textZoom).also { applySimpleMode(tab.id, it) }
+        factory.create(tab.id, tab.desktopMode, settings.textZoom).also { view ->
+            pageGuardScript?.let { factory.installPageGuard(view, it) }
+            applySimpleMode(tab.id, view)
+        }
     }
 
     private fun destroyWebView(tabId: Long) {
@@ -214,9 +231,10 @@ class BrowserController(
         val state = viewModel.uiState.value
         val tab = state.currentTab ?: return false
         val view = webViews[tab.id]
+        val steps = view?.let(::stepsBackToAllowedPage)
         when {
             tab.showNewTabPage && tab.newTabPageCoversPage -> viewModel.hideNewTabPage(tab.id)
-            !tab.showNewTabPage && view?.canGoBack() == true -> view.goBack()
+            !tab.showNewTabPage && steps != null -> view.goBackOrForward(-steps)
             !tab.showNewTabPage && tab.startedOnNewTabPage -> viewModel.showNewTabPage(tab.id)
             // First page of a tab opened from another: close it and return to the opener.
             tab.parentId != null && state.tab(tab.parentId) != null -> {
@@ -226,6 +244,23 @@ class BrowserController(
             else -> return false
         }
         return true
+    }
+
+    /**
+     * How many steps back the nearest page Hisar would show is, skipping blocked pages (and
+     * SafeSearch hops, which would only bounce forward again). Null if there is none: going back
+     * must never reload something blocked, nor land on a block page.
+     */
+    private fun stepsBackToAllowedPage(view: WebView): Int? {
+        val guard = filters.guardOrNull ?: return if (view.canGoBack()) 1 else null
+        val tabMemory = view.webViewClient as? HisarWebViewClient
+        val history = view.copyBackForwardList()
+        for (index in history.currentIndex - 1 downTo 0) {
+            val url = history.getItemAtIndex(index).url
+            val blockedHere = tabMemory?.isContentBlocked(url) == true
+            if (!blockedHere && guard.checkNavigation(url) is Decision.Allow) return history.currentIndex - index
+        }
+        return null
     }
 
     fun goForward() {
@@ -489,6 +524,14 @@ class BrowserController(
     fun onFilesPicked(resultCode: Int, data: Intent?) {
         fileChooserCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
         fileChooserCallback = null
+    }
+
+    override fun onNavigationBlocked(tabId: Long, reason: BlockReason) = viewModel.onNavigationBlocked(reason)
+
+    override fun onBlockedPageBack(tabId: Long) {
+        if (tabId != currentTabId) return
+        // Nothing allowed behind the block page: the new tab page stands in.
+        if (!goBack()) viewModel.showNewTabPage(tabId)
     }
 
     override fun onRendererGone(tabId: Long, view: WebView) {

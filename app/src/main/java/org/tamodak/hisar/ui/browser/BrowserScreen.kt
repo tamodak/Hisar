@@ -35,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddToHomeScreen
@@ -96,6 +95,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -183,7 +183,9 @@ fun BrowserScreen(
                         onImageSearch = { controller.openImageSearch() },
                         onOpen = viewModel::navigate,
                         onOpenInNewTab = viewModel::openInBackground,
-                        onRemoveTile = viewModel::hideTile,
+                        onCopyLink = controller::copy,
+                        onRemoveTile = viewModel::removeShortcut,
+                        onEditTile = viewModel::editShortcut,
                     )
                     else -> WebContent(controller, tab)
                 }
@@ -600,7 +602,7 @@ private fun GroupStrip(
                         contentAlignment = Alignment.Center,
                     ) {
                         if (t.showNewTabPage) {
-                            Icon(Icons.Filled.Shield, stringResource(R.string.new_tab), Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                            Icon(painterResource(R.drawable.ic_hisar_logo), stringResource(R.string.new_tab), Modifier.size(20.dp), tint = Color.Unspecified)
                         } else {
                             SiteIcon(t.url, t.displayTitle, size = 20.dp, icon = t.favicon)
                         }

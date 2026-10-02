@@ -1,0 +1,8 @@
+# Words removed from the merged lists after update-lists.sh builds them, because they collide with
+# everyday words in another language. One per line, exactly as they appear in the lists.
+
+# Collisions: Turkish vulgar "am" is the English "am" ("who am I", "I am"). Its Turkish uses are covered by
+# phrases in extra-words.txt ("am resmi", "amcık", …) instead.
+am
+s&m
+xx

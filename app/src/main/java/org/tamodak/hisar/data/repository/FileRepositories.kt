@@ -31,6 +31,8 @@ import org.tamodak.hisar.data.model.OfflinePage
 import org.tamodak.hisar.di.ApplicationScope
 import org.tamodak.hisar.di.IoDispatcher
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -187,6 +189,27 @@ class FaviconRepository @Inject constructor(
             val file = File(directory, fileName(host))
             if (file.exists()) BitmapFactory.decodeFile(file.path)?.also { memory.put(host, it) } else null
         }
+    }
+
+    /**
+     * Downloads a site's icon: its touch icon (sharp at tile size) or else its favicon. Blocking
+     * network I/O on the IO dispatcher; null if the site has neither.
+     */
+    suspend fun fetch(host: String): Bitmap? = withContext(io) {
+        for (path in listOf("/apple-touch-icon.png", "/favicon.ico")) {
+            val icon = runCatching {
+                val connection = URL("https://$host$path").openConnection() as HttpURLConnection
+                connection.connectTimeout = 5_000
+                connection.readTimeout = 5_000
+                if (connection.responseCode != HttpURLConnection.HTTP_OK) return@runCatching null
+                connection.inputStream.use(BitmapFactory::decodeStream)
+            }.getOrNull()
+            if (icon != null) {
+                save(host, icon)
+                return@withContext icon
+            }
+        }
+        null
     }
 
     fun save(host: String?, icon: Bitmap) {

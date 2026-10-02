@@ -33,20 +33,21 @@ import androidx.core.net.toUri
 
 /**
  * Loads a site's icon off the main thread. Provided at the top of the UI, like an image loader:
- * composables ask for icons by host and show them when they arrive.
+ * composables ask for icons by host and show them when they arrive. With [fetch], an icon not
+ * cached yet is downloaded from the site.
  */
 fun interface FaviconLoader {
-    suspend fun load(host: String?): Bitmap?
+    suspend fun load(host: String?, fetch: Boolean): Bitmap?
 }
 
-val LocalFaviconLoader = compositionLocalOf { FaviconLoader { null } }
+val LocalFaviconLoader = compositionLocalOf { FaviconLoader { _, _ -> null } }
 
 /** A site's favicon by URL, loaded from the cache without blocking composition. */
 @Composable
-fun SiteIcon(url: String, label: String, modifier: Modifier = Modifier, size: Dp = 24.dp, icon: Bitmap? = null) {
+fun SiteIcon(url: String, label: String, modifier: Modifier = Modifier, size: Dp = 24.dp, icon: Bitmap? = null, fetch: Boolean = false) {
     val loader = LocalFaviconLoader.current
     val host = url.toUri().host
-    val loaded by produceState(icon, host, icon) { if (icon == null) value = loader.load(host) }
+    val loaded by produceState(icon, host, icon) { if (icon == null) value = loader.load(host, fetch) }
     SiteIcon(loaded, label, modifier, size)
 }
 

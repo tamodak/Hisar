@@ -74,7 +74,7 @@ object BlockedPage {
               <h1>${esc(context.getString(R.string.blocked_title))}</h1>
               <p>${esc(explanation)}</p>
               ${if (shownDetail.isNotEmpty()) "<p><code>${esc(shownDetail)}</code></p>" else ""}
-              <button onclick="history.back()">${esc(context.getString(R.string.go_back))}</button>
+              <button onclick="location.href='hisar://back'">${esc(context.getString(R.string.go_back))}</button>
             </main></body></html>
         """.trimIndent()
     }

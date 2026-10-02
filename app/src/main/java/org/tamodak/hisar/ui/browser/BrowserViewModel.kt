@@ -26,7 +26,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.tamodak.hisar.R
 import org.tamodak.hisar.data.model.DownloadStatus
-import org.tamodak.hisar.data.model.HistoryEntry
+import org.tamodak.hisar.data.model.DefaultShortcuts
+import org.tamodak.hisar.data.model.Shortcut
 import org.tamodak.hisar.data.model.OfflinePage
 import org.tamodak.hisar.data.model.SavedSession
 import org.tamodak.hisar.data.model.SavedTab
@@ -41,9 +42,11 @@ import org.tamodak.hisar.data.repository.ImageSearchRepository
 import org.tamodak.hisar.data.repository.OfflinePageRepository
 import org.tamodak.hisar.data.repository.RecentTabsRepository
 import org.tamodak.hisar.data.repository.SettingsRepository
+import org.tamodak.hisar.data.repository.ShortcutRepository
 import org.tamodak.hisar.data.repository.SuggestionRepository
 import org.tamodak.hisar.data.repository.TabRepository
 import org.tamodak.hisar.di.DefaultDispatcher
+import org.tamodak.hisar.filter.BlockReason
 import org.tamodak.hisar.filter.Decision
 import org.tamodak.hisar.filter.SafeSearch
 import org.tamodak.hisar.search.Omnibox
@@ -66,6 +69,7 @@ class BrowserViewModel @Inject constructor(
     private val filters: FilterRepository,
     private val settingsRepository: SettingsRepository,
     private val history: HistoryRepository,
+    private val shortcuts: ShortcutRepository,
     private val bookmarks: BookmarkRepository,
     private val recentTabs: RecentTabsRepository,
     private val offlinePageRepository: OfflinePageRepository,
@@ -90,12 +94,24 @@ class BrowserViewModel @Inject constructor(
     val offlinePages: StateFlow<List<OfflinePage>> = offlinePageRepository.pages
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** Most-visited tiles. Tiles are links Hisar offers, so nothing it would block appears among them. */
-    val tiles: StateFlow<List<HistoryEntry>> = combine(history.mostVisited(24), settings.map { it.hiddenTiles }.distinctUntilChanged()) { sites, hidden ->
-        sites.filter { it.url.trimEnd('/') !in hidden }
-    }.mapLatest { sites ->
+    /**
+     * The new tab page's tiles, as in Chrome: the user's pinned shortcuts first, then their
+     * most-visited sites, then popular defaults until there is history to replace them. Removed
+     * tiles stay removed, and tiles are links Hisar offers, so nothing it would block appears.
+     */
+    val tiles: StateFlow<List<Shortcut>> = combine(
+        shortcuts.pinned,
+        history.mostVisited(24),
+        settings.map { it.hiddenTiles }.distinctUntilChanged(),
+    ) { pinned, visited, hidden ->
+        // One tile per site; a removed tile hides its whole site, not just one address.
+        val hiddenSites = hidden.mapTo(HashSet(), ::siteOf)
+        val taken = pinned.mapTo(HashSet()) { siteOf(it.url) }
+        val suggested = visited.map { Shortcut(it.title.ifBlank { siteOf(it.url) }, it.url) } + DefaultShortcuts
+        pinned + suggested.filter { siteOf(it.url) !in hiddenSites && taken.add(siteOf(it.url)) }
+    }.mapLatest { candidates ->
         val guard = filters.guard()
-        sites.filter { guard.allows(it.url) && guard.isClean(it.title) }.take(8)
+        candidates.filter { guard.allows(it.url) && guard.isClean(it.title) }.take(MAX_TILES)
     }.flowOn(defaultDispatcher).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val omniboxInput = MutableStateFlow("")
@@ -110,7 +126,8 @@ class BrowserViewModel @Inject constructor(
         val local = localSuggestions(text)
         emit(local)
         val current = settings.value
-        if (!current.searchSuggestions) return@transformLatest
+        // Typed text with a blocked word is never sent for suggestions.
+        if (!current.searchSuggestions || !filters.guard().isClean(text)) return@transformLatest
         delay(SUGGEST_DEBOUNCE_MILLIS) // One request per pause in typing, not per keystroke.
         val remote = suggestionRepository.suggestions(current.searchEngine, filters.guard(), text)
             .map { Suggestion(Suggestion.Kind.SEARCH, it, current.searchEngine.searchUrl(it)) }
@@ -257,6 +274,9 @@ class BrowserViewModel @Inject constructor(
         }
         val id = tabId
         val target = SafeSearch.enforce(url) ?: url
+        // Checked before anything is sent: a blocked search or site never leaves the phone, and
+        // the tab stays where it was instead of showing a block page.
+        if (refuse(target)) return
         updateTab(id) {
             it.copy(
                 url = target,
@@ -293,6 +313,25 @@ class BrowserViewModel @Inject constructor(
         val lang = Locale.getDefault().language
         navigate("https://translate.google.com/translate?sl=auto&tl=$lang&hl=$lang&u=" + URLEncoder.encode(tab.url, "UTF-8"), tabId)
     }
+
+    /**
+     * True, with a message, if Hisar would block [url]: it is not opened at all. Before the lists
+     * have loaded (the first second after launch) the request filter still blocks it, on the phone.
+     */
+    private fun refuse(url: String): Boolean {
+        val decision = filters.guardOrNull?.checkNavigation(url) as? Decision.Block ?: return false
+        onNavigationBlocked(decision.reason)
+        return true
+    }
+
+    /** Something was stopped before it left the phone; say so instead of showing a block page. */
+    fun onNavigationBlocked(reason: BlockReason) = showMessage(
+        when (reason) {
+            BlockReason.BLOCKED_WORDS, BlockReason.PAGE_CONTENT -> R.string.search_blocked
+            BlockReason.UNSAFE_SEARCH_ENGINE -> R.string.search_engine_blocked
+            BlockReason.HARMFUL_SITE, BlockReason.AD_OR_TRACKER -> R.string.site_blocked
+        },
+    )
 
     // --- Events from the tab's WebView -----------------------------------------------------------
 
@@ -395,6 +434,7 @@ class BrowserViewModel @Inject constructor(
 
     /** Chrome's "Open in new tab in group": joins the current tab's group, or starts one with it. */
     fun openInGroup(url: String) {
+        if (refuse(url)) return
         val current = _uiState.value.currentTab ?: return openInBackground(url)
         val groupId = current.groupId ?: createGroup(current.id).id
         val last = _uiState.value.tabs.indexOfLast { it.groupId == groupId }
@@ -403,6 +443,7 @@ class BrowserViewModel @Inject constructor(
     }
 
     fun openInBackground(url: String) {
+        if (refuse(url)) return
         val id = newTab(url, parentId = _uiState.value.currentTabId, select = false)
         showMessage(R.string.opened_in_new_tab, actionLabel = R.string.switch_to_tab, action = MessageAction.SwitchToTab(id))
     }
@@ -443,9 +484,30 @@ class BrowserViewModel @Inject constructor(
         newTab(offlinePageRepository.contentUrl(page), offlinePageId = page.id)
     }
 
-    fun hideTile(url: String) {
-        viewModelScope.launch { settingsRepository.hideTile(url.trimEnd('/')) }
+    /** Removes a tile; a pinned one is unpinned too. It doesn't come back as a suggestion. */
+    fun removeShortcut(shortcut: Shortcut) {
+        viewModelScope.launch {
+            if (shortcut.pinned) shortcuts.unpin(shortcut.url)
+            settingsRepository.hideTile(shortcut.url.trimEnd('/'))
+        }
     }
+
+    /**
+     * Saves an edited tile, which pins it. Returns false if [address] isn't a web address. A
+     * suggested tile that was edited into something else is hidden so it doesn't reappear.
+     */
+    fun editShortcut(original: Shortcut, title: String, address: String): Boolean {
+        val text = address.trim()
+        if (title.isBlank() || !Omnibox.looksLikeUrl(text)) return false
+        val url = Omnibox.toUrl(text, settings.value.searchEngine) ?: return false
+        viewModelScope.launch {
+            shortcuts.pin(title.trim(), url, replacing = original.url.takeIf { original.pinned })
+            if (!original.pinned && original.url != url) settingsRepository.hideTile(original.url.trimEnd('/'))
+        }
+        return true
+    }
+
+    private fun siteOf(url: String) = url.toUri().host?.removePrefix("www.") ?: url
 
     fun setSimpleMode(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setSimpleMode(enabled) }
@@ -540,6 +602,7 @@ class BrowserViewModel @Inject constructor(
     fun onVoiceResult(text: String?, inNewTab: Boolean) {
         if (text.isNullOrBlank()) return
         val url = Omnibox.toUrl(text, settings.value.searchEngine) ?: return
+        if (refuse(url)) return
         if (inNewTab) newTab(url) else navigate(url)
     }
 
@@ -600,5 +663,7 @@ class BrowserViewModel @Inject constructor(
     private companion object {
         const val APK_MIME = "application/vnd.android.package-archive"
         const val SUGGEST_DEBOUNCE_MILLIS = 150L
+        /** Two rows of four, as on Chrome's new tab page. */
+        const val MAX_TILES = 8
     }
 }

@@ -1,0 +1,108 @@
+# Words blocked in searches only, merged by update-lists.sh into lists/search_words.txt.
+#
+# These have an everyday meaning ("olgun domates" is a ripe tomato, "meme" is also an internet
+# meme), so they stop any search, address or typed request that contains them before it leaves
+# the phone, but they don't count towards blocking a page by its content. Move a word to
+# extra-words.txt to block pages that use it too.
+# One word or phrase per line, whole words, case-insensitive.
+
+# --- English ------------------------------------------------------------------------------------
+mature
+matures
+adult
+adults
+adult video
+adult videos
+amateur
+amateurs
+cougar
+cougars
+trans
+transgender
+teen girls
+hot girls
+hot women
+babe
+babes
+bikini
+bikinis
+breast
+breasts
+butt
+booty
+cowgirl
+missionary
+spooning
+69
+climax
+squirt
+condom
+condoms
+taboo
+seduction
+seductive
+sensual
+intimate
+intimacy
+undress
+undressed
+undressing
+strip
+shower girl
+massage girl
+happy ending
+
+doggy
+fingering
+kink
+
+# --- Turkish ------------------------------------------------------------------------------------
+olgun
+olgun kadın
+olgun kadin
+olgun kadınlar
+olgun kadinlar
+yetişkin
+yetiskin
+meme
+memeler
+memeli
+popo
+kıç
+kic
+sik
+türbanlı
+turbanli
+liseli
+çıtır
+citir
+üvey anne
+uvey anne
+üvey kardeş
+uvey kardes
+masaj
+mutlu son
+bikinili
+iç çamaşırı
+ic camasiri
+sütyen
+sutyen
+külot
+kulot
+tanga
+dekolte
+frikik
+öpüşme
+opusme
+flört
+flort
+tecavüz
+tecavuz
+sapık
+sapik
+boşalma
+bosalma
+nü
+
+azgın
+azgin

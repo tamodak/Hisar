@@ -67,7 +67,10 @@ class MainActivity : ComponentActivity(), SystemLaunchers {
         controller = BrowserController(this, viewModel, filters, this)
         if (savedInstanceState == null) handleIntent(intent)
 
-        val faviconLoader = FaviconLoader(favicons::load)
+        // Icons are fetched only from sites the filters would let the page itself load.
+        val faviconLoader = FaviconLoader { host, fetch ->
+            favicons.load(host) ?: host?.takeIf { fetch && filters.guard().allows("https://$it/") }?.let { favicons.fetch(it) }
+        }
         setContent {
             val settings by viewModel.settings.collectAsStateWithLifecycle()
             val dark = isSystemInDarkTheme() || settings.simpleMode

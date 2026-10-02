@@ -15,13 +15,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import org.tamodak.hisar.data.model.SimpleFont
 
-private val HisarBlue = Color(0xFF1F4FBF)
-private val LightColors = lightColorScheme(primary = HisarBlue)
-private val DarkColors = darkColorScheme(primary = Color(0xFFB3C5FF))
+/** Hisar green, from the logo; used where the platform has no wallpaper colours. */
+private val LightColors = lightColorScheme(
+    primary = Color(0xFF4A7A1C),
+    primaryContainer = Color(0xFFD6EDB6),
+    onPrimaryContainer = Color(0xFF13240A),
+    secondaryContainer = Color(0xFFDCE7CC),
+    onSecondaryContainer = Color(0xFF161F0F),
+)
+private val DarkColors = darkColorScheme(
+    primary = Color(0xFFA6D46B),
+    onPrimary = Color(0xFF1D3700),
+    primaryContainer = Color(0xFF345310),
+    onPrimaryContainer = Color(0xFFD6EDB6),
+    secondaryContainer = Color(0xFF3B4A2E),
+    onSecondaryContainer = Color(0xFFDCE7CC),
+)
 
 /**
  * Hisar's theme, like Chrome's: Material You colours from the wallpaper where the platform has
- * them (Android 12+), Hisar blue otherwise, following the system's light or dark setting.
+ * them (Android 12+), Hisar green otherwise, following the system's light or dark setting.
  * Simple mode replaces it with white on black in the chosen font.
  */
 @Composable

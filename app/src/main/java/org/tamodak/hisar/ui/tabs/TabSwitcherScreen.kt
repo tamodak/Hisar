@@ -33,7 +33,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MoreVert
@@ -66,6 +65,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -197,7 +197,7 @@ private fun TabCard(tab: TabState, thumbnail: Bitmap?, selected: Boolean, groups
             Column {
                 Row(Modifier.fillMaxWidth().height(48.dp).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (tab.showNewTabPage) {
-                        Icon(Icons.Filled.Shield, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Icon(painterResource(R.drawable.ic_hisar_logo), null, Modifier.size(16.dp), tint = Color.Unspecified)
                     } else {
                         SiteIcon(tab.url, title, size = 16.dp, icon = tab.favicon)
                     }
@@ -244,7 +244,7 @@ private fun TabCard(tab: TabState, thumbnail: Bitmap?, selected: Boolean, groups
 @Composable
 private fun TabPreview(tab: TabState, thumbnail: Bitmap?, title: String, iconSize: Int) {
     when {
-        tab.showNewTabPage -> Icon(Icons.Filled.Shield, null, Modifier.size(iconSize.dp), tint = MaterialTheme.colorScheme.primary)
+        tab.showNewTabPage -> Icon(painterResource(R.drawable.ic_hisar_logo), null, Modifier.size(iconSize.dp), tint = Color.Unspecified)
         thumbnail != null -> Image(thumbnail.asImageBitmap(), null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
         else -> SiteIcon(tab.url, title, size = iconSize.dp, icon = tab.favicon)
     }
