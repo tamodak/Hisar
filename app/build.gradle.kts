@@ -10,14 +10,14 @@ plugins {
 android {
     namespace = "org.tamodak.hisar"
     compileSdk {
-        version = release(36) {
+        version = release(37) {
             minorApiLevel = 1
         }
     }
 
     defaultConfig {
         applicationId = "org.tamodak.hisar"
-        // Same API levels as Killit.
+        // Same API levels as Killit. (compileSdk is newer: GeckoView needs 37.1.)
         minSdk = 26
         targetSdk = 36
         versionCode = 1
