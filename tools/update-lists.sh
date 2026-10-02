@@ -20,6 +20,7 @@ OUT=app/src/main/assets/extensions/hisar/lists
 mkdir -p "$OUT"
 
 STEVENBLACK=https://raw.githubusercontent.com/StevenBlack/hosts/master
+HAGEZI=https://raw.githubusercontent.com/hagezi/dns-blocklists/main
 LDNOOBW=https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master
 
 # Hosts-file format ("0.0.0.0 example.com") to bare domains.
@@ -28,6 +29,11 @@ hosts_to_domains() {
         | awk '{print tolower($2)}' \
         | grep -vE '^(0\.0\.0\.0|localhost|localhost\.localdomain|local|broadcasthost)$' \
         | sort -u
+}
+
+# Plain domain lists (one per line, # comments) to bare domains.
+plain_domains() {
+    grep -vE '^[[:space:]]*(#|$)' | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+|[[:space:]]+$//; s/^\*\.//' | grep -v '^$' | sort -u
 }
 
 normalize_words() {
@@ -43,11 +49,16 @@ if ! $WORDS_ONLY; then
 echo "Ads & malware (StevenBlack unified hosts)…"
 curl -fsSL "$STEVENBLACK/hosts" | hosts_to_domains > "$OUT/ads.txt"
 
-echo "Harmful sites (StevenBlack porn + gambling extensions)…"
+# Adult sites: HaGeZi's NSFW list and oisd's NSFW Small (its NSFW domains among the Tranco top
+# million). Measured against the popular adult domains the main lists agree on, together they
+# cover nearly all of them at about the size StevenBlack's porn list had, which covered 54-70%.
+# Gambling: StevenBlack's gambling extension.
+echo "Harmful sites (HaGeZi NSFW + oisd NSFW Small + StevenBlack gambling)…"
 {
-    curl -fsSL "$STEVENBLACK/alternates/porn-only/hosts"
-    curl -fsSL "$STEVENBLACK/alternates/gambling-only/hosts"
-} | hosts_to_domains > "$OUT/harmful.txt"
+    curl -fsSL "$HAGEZI/wildcard/nsfw-onlydomains.txt" | plain_domains
+    curl -fsSL "https://nsfw-small.oisd.nl/domainswild2" | plain_domains
+    curl -fsSL "$STEVENBLACK/alternates/gambling-only/hosts" | hosts_to_domains
+} | sort -u > "$OUT/harmful.txt"
 fi
 
 echo "Blocked words (LDNOOBW en + tr) and local additions…"

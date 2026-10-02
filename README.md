@@ -5,7 +5,7 @@ settings, allowlist or "disable" button.
 
 | Protection | How |
 |---|---|
-| **Harmful sites** | ~83k porn and gambling domains ([StevenBlack](https://github.com/StevenBlack/hosts) extensions). Subdomains included. Blocked as pages *and* as images, frames and scripts. |
+| **Harmful sites** | ~94k adult and gambling domains: [HaGeZi NSFW](https://github.com/hagezi/dns-blocklists) + [oisd NSFW Small](https://oisd.nl/) (chosen by measurement: together they cover nearly all popular adult domains the main lists agree on, where StevenBlack's porn list covered 54–70%), and StevenBlack's gambling extension. Subdomains included. Blocked as pages *and* as images, frames and scripts. |
 | **Ad blocker** | ~75k ad, tracker and malware domains (StevenBlack unified hosts), dropped at the network request. |
 | **Blocked words** | [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) en + tr, plus Hisar's own English and Turkish lists of sexuality-related words (`tools/extra-words.txt`). Words with an innocent everyday meaning ("olgun", "meme", "mature") are in `tools/search-only-words.txt`: they stop searches but don't count against pages. `tools/word-exceptions.txt` drops words that collide with another language ("am"). Rebuild with `tools/update-lists.sh --words-only`. Matching is whole-word only and folds case. |
 | **Enforced SafeSearch** | Google `safe=active`, Bing `adlt=strict`, DuckDuckGo `kp=1`, Yahoo `vm=r`, Brave `safesearch=strict`, forced on every search and overriding `safe=off`. Yandex, Ecosia and Startpage are blocked because Hisar cannot force their SafeSearch from the URL. YouTube Restricted Mode is set through its `PREF` cookie. |
@@ -55,7 +55,7 @@ Chrome's design and the Chrome features people use most:
 
 No incognito mode, deliberately: it would hide browsing from whoever set Hisar up.
 
-The lists are compiled into the APK (`app/src/main/assets/lists/`), so there is no download to
+The lists are compiled into the APK (`app/src/main/assets/extensions/hisar/lists/`), so there is no download to
 block. To refresh them: `tools/update-lists.sh`, review the diff, rebuild.
 
 ## Logo
@@ -168,3 +168,19 @@ and its [recommendations](https://developer.android.com/topic/architecture/recom
   block the others.
 - The lists take roughly 1–3 s to load on a cold start. Requests wait for them rather than going
   through unfiltered.
+
+## License
+
+Hisar is free software: you can redistribute it and/or modify it under the terms of the
+[GNU General Public License](LICENSE) as published by the Free Software Foundation, either
+version 3 of the License, or (at your option) any later version.
+
+It includes:
+
+| Part | Source | License |
+|---|---|---|
+| Browser engine | [GeckoView](https://firefox-source-docs.mozilla.org/mobile/android/geckoview/) (Mozilla) | MPL-2.0 |
+| Adult-site list | [HaGeZi DNS blocklists](https://github.com/hagezi/dns-blocklists), NSFW | GPL-3.0 |
+| Adult-site list | [oisd](https://oisd.nl/), NSFW Small | free to use, credited here |
+| Ad, tracker and gambling lists | [StevenBlack/hosts](https://github.com/StevenBlack/hosts) | MIT |
+| Word lists (part) | [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) | CC BY 4.0 |
