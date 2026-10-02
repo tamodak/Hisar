@@ -152,7 +152,11 @@ class TabSession(
         }
 
         override fun onMessage(nativeApp: String, message: Any, sender: WebExtension.MessageSender): GeckoResult<Any>? {
-            if ((message as? JSONObject)?.optString("type") == "blocked") callbacks.onNavigationBlocked(tabId, BlockReason.BLOCKED_WORDS)
+            val m = message as? JSONObject ?: return null
+            when (m.optString("type")) {
+                "blocked" -> callbacks.onNavigationBlocked(tabId, BlockReason.BLOCKED_WORDS)
+                "metrics" -> engine.logMetrics(m)
+            }
             return null
         }
     }

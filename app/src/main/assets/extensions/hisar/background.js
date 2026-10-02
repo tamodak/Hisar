@@ -21,6 +21,12 @@ var lists = null;
 var matchers = null;
 var guard = null;
 var simpleCss = null;
+/**
+ * Strategy switches for comparing alternatives (debug builds only; tools/experiments). Null in
+ * normal use: the defaults apply and nothing is measured.
+ */
+var experiment = null;
+function option(name, fallback) { return experiment && experiment[name] !== undefined ? experiment[name] : fallback; }
 var resolveReady;
 var ready = new Promise(function (resolve) { resolveReady = resolve; });
 
@@ -31,17 +37,14 @@ var nextId = 1;
 var pending = new Map();
 
 /**
- * The port to the app. Opened at start and again whenever it drops; until the app answers the
- * hello, nothing is sent through it.
+ * The port to the app. Messages sent before the app is listening wait in GeckoView's queue
+ * (firefox-source-docs: GeckoView, "Interacting with Web content"), so one connection is enough;
+ * it is only reopened if it ever drops.
  */
 function connect() {
   var port = browser.runtime.connectNative(APP);
-  var answered = false;
-  port.onMessage.addListener(function (message) {
-    answered = true;
-    app = port;
-    onAppMessage(message);
-  });
+  app = port;
+  port.onMessage.addListener(onAppMessage);
   port.onDisconnect.addListener(function () {
     if (app === port) app = null;
     pending.forEach(function (p) { p.reject(new Error('disconnected')); });
@@ -49,8 +52,6 @@ function connect() {
     setTimeout(connect, RECONNECT_MILLIS);
   });
   port.postMessage({ type: 'hello' });
-  // The app may not be listening yet when the engine starts; try again until it is.
-  setTimeout(function () { if (!answered) port.disconnect(); }, RECONNECT_MILLIS * 2);
 }
 
 /** Asks the app something and waits for its reply. Rejects if the app does not answer. */
@@ -91,6 +92,10 @@ function onAppMessage(message) {
           browser.tabs.sendMessage(tab.id, { type: 'simpleMode', css: simpleCss }).catch(function () {});
         });
       }, function () {});
+      break;
+    case 'config':
+      experiment = message.config ? JSON.parse(message.config) : null;
+      if (lists) registerContentScripts();
       break;
     case 'welcome':
       // The app is listening; the lists follow once it has loaded them.
@@ -133,7 +138,8 @@ var registered = null;
 /** The content script, with the word lists and simple mode's style ready at document start. */
 function registerContentScripts() {
   var previous = registered;
-  var data = 'var HISAR_DATA = ' + JSON.stringify({ lists: lists, simpleCss: simpleCss }) + ';';
+  var data = 'var HISAR_DATA = ' + JSON.stringify({ lists: lists, simpleCss: simpleCss, config: experiment, measure: experiment !== null }) + ';';
+  registerShadowHook(option('shadow', 'sweep') === 'main');
   return browser.contentScripts.register({
     matches: ['<all_urls>'],
     allFrames: true,
@@ -144,6 +150,20 @@ function registerContentScripts() {
     registered = script;
     if (previous) previous.unregister();
   });
+}
+
+/** The page-world half of the 'main' shadow strategy (shadow-hook.js). */
+var shadowHook = false;
+function registerShadowHook(wanted) {
+  if (wanted === shadowHook || !browser.scripting) return;
+  shadowHook = wanted;
+  if (wanted) {
+    browser.scripting.registerContentScripts([{
+      id: 'shadow-hook', js: ['shadow-hook.js'], matches: ['<all_urls>'], runAt: 'document_start', allFrames: true, world: 'MAIN',
+    }]).catch(function (e) { tell({ type: 'metrics', kind: 'error', message: 'shadow hook: ' + e.message }); });
+  } else {
+    browser.scripting.unregisterContentScripts({ ids: ['shadow-hook'] }).catch(function () {});
+  }
 }
 
 browser.runtime.onMessage.addListener(function (message, sender) {
@@ -219,7 +239,9 @@ function decoderFor(charset) {
  * Content-Type is rewritten to say so (the header outranks the page's own <meta> declaration).
  */
 function onHeadersReceived(details) {
-  if (!guard || details.statusCode < 200 || details.statusCode >= 300) return {};
+  // Off by default: rewriting server-rendered HTML makes frameworks' hydration fail (React
+  // errors on bbc.com), and the content script hides the same text before it is painted.
+  if (!guard || details.statusCode < 200 || details.statusCode >= 300 || !option('html', false)) return {};
   var headers = details.responseHeaders || [];
   var type = header(headers, 'content-type');
   var value = type ? type.value : '';
@@ -232,6 +254,8 @@ function onHeadersReceived(details) {
   var decoder = declared ? decoderFor(declared) : null;
   var head = [];
   var headLength = 0;
+  var spentMs = 0;
+  var bytesIn = 0;
 
   function emit(text) { if (text) filter.write(encoder.encode(text)); }
   function start(bytes) {
@@ -239,7 +263,9 @@ function onHeadersReceived(details) {
   }
 
   filter.ondata = function (event) {
+    var started = performance.now();
     var bytes = new Uint8Array(event.data);
+    bytesIn += bytes.length;
     if (!decoder) {
       // No charset in the header: wait for enough of the document to find its <meta>.
       head.push(bytes);
@@ -251,6 +277,7 @@ function onHeadersReceived(details) {
       bytes = joined;
     }
     emit(html.write(decoder.decode(bytes, { stream: true })));
+    spentMs += performance.now() - started;
   };
   filter.onstop = function () {
     if (!decoder) {
@@ -260,6 +287,7 @@ function onHeadersReceived(details) {
     }
     emit(html.write(decoder.decode()) + html.end());
     filter.close();
+    if (experiment) tell({ type: 'metrics', kind: 'html', url: details.url, ms: Math.round(spentMs), bytes: bytesIn, removed: html.removed });
   };
   filter.onerror = function () {};
 
@@ -280,9 +308,8 @@ browser.webRequest.onHeadersReceived.addListener(onHeadersReceived, { urls: ['<a
 // --- YouTube Restricted Mode -------------------------------------------------------------------
 
 /*
- * YouTube has no URL parameter for Restricted Mode; it is the f2=8000000 flag in its PREF cookie,
- * which YouTube rewrites as other preferences change. So the flag is merged back into every
- * top-level YouTube request, and stored for the requests that follow.
+ * The earlier way, kept for comparison ('youtube': 'cookie'): the f2=8000000 Restricted Mode flag
+ * in YouTube's PREF cookie, merged back into every top-level YouTube request.
  */
 var YT_FLAG = 'f2';
 var YT_RESTRICTED = '8000000';
@@ -294,6 +321,7 @@ function restrictedPref(current) {
 }
 
 function onBeforeSendHeaders(details) {
+  if (option('youtube', 'header') !== 'cookie') return {};
   var host = new URL(details.url).hostname;
   if (host !== 'youtube.com' && !/\.youtube\.com$/.test(host)) return {};
   var headers = details.requestHeaders || [];
@@ -317,6 +345,19 @@ function onBeforeSendHeaders(details) {
 }
 
 browser.webRequest.onBeforeSendHeaders.addListener(onBeforeSendHeaders, { urls: ['*://*.youtube.com/*', '*://youtube.com/*'], types: ['main_frame'] }, ['blocking', 'requestHeaders']);
+
+/*
+ * The default (YouTube's check_content_restrictions page confirms it, the PREF cookie it does
+ * not): the method Google documents for networks: a YouTube-Restrict header on every request to
+ * YouTube's web hosts (knowledge.workspace.google.com, "Control YouTube content available").
+ */
+var YT_HEADER_HOSTS = ['*://www.youtube.com/*', '*://m.youtube.com/*', '*://youtubei.googleapis.com/*', '*://youtube.googleapis.com/*', '*://www.youtube-nocookie.com/*'];
+browser.webRequest.onBeforeSendHeaders.addListener(function (details) {
+  if (option('youtube', 'header') !== 'header') return {};
+  var headers = (details.requestHeaders || []).filter(function (h) { return h.name.toLowerCase() !== 'youtube-restrict'; });
+  headers.push({ name: 'YouTube-Restrict', value: 'Strict' });
+  return { requestHeaders: headers };
+}, { urls: YT_HEADER_HOSTS }, ['blocking', 'requestHeaders']);
 
 // --- Cookies for the app ---------------------------------------------------------------------
 

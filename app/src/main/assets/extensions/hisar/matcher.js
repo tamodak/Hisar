@@ -9,7 +9,8 @@
  * background script, the content script and the Node tests.
  */
 var HisarMatcher = (function () {
-  function escape(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  /** Words remembered per matcher. */
+  var MEMO_LIMIT = 50000;
 
   /** The words of [text] in normalised form, as WordFilter.tokenize makes them. */
   function tokens(text) {
@@ -27,16 +28,45 @@ var HisarMatcher = (function () {
     list.phrases.forEach(function (p) { (byFirst[p[0]] = byFirst[p[0]] || []).push(p); });
     var stems = Object.create(null);
     list.stems.forEach(function (s) { stems[s] = true; });
-    var embedded = list.embedded.length
-      ? new RegExp(list.embedded.slice().sort(function (a, b) { return b.length - a.length; }).map(escape).join('|'))
-      : null;
+    // Turkish endings by length, so a word needs one lookup per length rather than per ending.
+    var endings = Object.create(null);
+    var endingLengths = [];
+    suffixes.forEach(function (suffix) {
+      endings[suffix] = true;
+      if (endingLengths.indexOf(suffix.length) < 0) endingLengths.push(suffix.length);
+    });
+    // Embedded words by length, looked up as substrings of the same lengths.
+    var embedded = Object.create(null);
+    var embeddedLengths = [];
+    list.embedded.forEach(function (e) {
+      embedded[e] = true;
+      if (embeddedLengths.indexOf(e.length) < 0) embeddedLengths.push(e.length);
+    });
 
-    function loose(word) {
-      for (var s = 0; s < suffixes.length; s++) {
-        var suffix = suffixes[s];
-        if (word.length > suffix.length && word.slice(-suffix.length) === suffix && stems[word.slice(0, -suffix.length)] === true) return true;
+    function looseUncached(word) {
+      for (var i = 0; i < endingLengths.length; i++) {
+        var n = endingLengths[i];
+        if (word.length > n && endings[word.slice(-n)] === true && stems[word.slice(0, -n)] === true) return true;
       }
-      return word.length > 6 && embedded !== null && embedded.test(word);
+      if (word.length <= 6) return false;
+      for (var j = 0; j < embeddedLengths.length; j++) {
+        var len = embeddedLengths[j];
+        for (var start = 0; start + len <= word.length; start++) {
+          if (embedded[word.substr(start, len)] === true) return true;
+        }
+      }
+      return false;
+    }
+
+    // Natural text repeats its words; each is judged once (up to a bound, for very long pages).
+    var memo = new Map();
+    function loose(word) {
+      var known = memo.get(word);
+      if (known !== undefined) return known;
+      var result = looseUncached(word);
+      if (memo.size > MEMO_LIMIT) memo.clear();
+      memo.set(word, result);
+      return result;
     }
 
     return function (value) {

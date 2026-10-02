@@ -67,6 +67,8 @@ class GeckoEngine @Inject constructor(
     private val extension = CompletableDeferred<WebExtension>()
     private var background: WebExtension.Port? = null
     private var simpleCss: String? = null
+    /** Strategy switches being compared (debug builds only, tools/experiments); null normally. */
+    private var experiment: JSONObject? = null
     private var nextId = 1
     private val pending = HashMap<Int, CompletableDeferred<JSONObject?>>()
 
@@ -118,6 +120,7 @@ class GeckoEngine @Inject constructor(
                 scope.launch(Dispatchers.Main) {
                     // As a string: the engine's message bridge can't carry arrays of arrays.
                     val lists = GuardLists.json(filters.guard()).toString()
+                    experiment?.let { port.postMessage(JSONObject().put("type", "config").put("config", it.toString())) }
                     port.postMessage(JSONObject().put("type", "lists").put("lists", lists).put("simpleCss", simpleCss ?: JSONObject.NULL))
                 }
             }
@@ -132,7 +135,33 @@ class GeckoEngine @Inject constructor(
             "blocked" -> events?.onRequestBlocked(message.optInt("tabId", -1))
             "adBlocked" -> events?.onAdBlocked(message.optInt("tabId", -1))
             "reply" -> pending.remove(message.optInt("id"))?.complete(message)
+            "metrics" -> logMetrics(message)
         }
+    }
+
+    // --- Comparing strategies (debug builds only) -------------------------------------------------
+
+    /**
+     * Switches the filtering strategies for an experiment (tools/experiments): the extension's
+     * options, and "dns" ("cleanbrowsing" for a family DNS resolver, else the system's).
+     */
+    @MainThread
+    fun setExperiment(config: JSONObject) {
+        if (!BuildConfig.DEBUG) return
+        experiment = config
+        background?.postMessage(JSONObject().put("type", "config").put("config", config.toString()))
+        val settings = runtime.settings
+        if (config.optString("dns") == "cleanbrowsing") {
+            settings.setTrustedRecursiveResolverUri(CLEANBROWSING_ADULT_DOH)
+            settings.setTrustedRecursiveResolverMode(GeckoRuntimeSettings.TRR_MODE_ONLY)
+        } else {
+            settings.setTrustedRecursiveResolverMode(GeckoRuntimeSettings.TRR_MODE_OFF)
+        }
+    }
+
+    /** A measurement from the extension, for tools/experiments to collect from the log. */
+    fun logMetrics(message: JSONObject) {
+        if (BuildConfig.DEBUG) Log.i(METRICS_TAG, message.put("experiment", experiment?.optString("name")).toString())
     }
 
     /** Sends [message] to the background script and waits for its reply; null if there is none. */
@@ -177,5 +206,7 @@ class GeckoEngine @Inject constructor(
         private const val EXTENSION_ID = "filter@hisar.tamodak.org"
         private const val EXTENSION_LOCATION = "resource://android/assets/extensions/hisar/"
         private const val ASK_TIMEOUT_MILLIS = 5_000L
+        private const val METRICS_TAG = "Hisar.Metrics"
+        private const val CLEANBROWSING_ADULT_DOH = "https://doh.cleanbrowsing.org/doh/adult-filter/"
     }
 }

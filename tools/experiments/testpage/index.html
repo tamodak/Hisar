@@ -1,0 +1,116 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Hisar filter cases</title>
+<style>body{font:14px sans-serif;margin:8px} .case{border:1px solid #ccc;margin:2px;padding:2px} #big li{font-size:9px}</style>
+</head><body>
+<!--
+  Hard cases for the page filter, each marked with what should happen to it. The page checks
+  itself 8 s after load and writes the result into #hisar-test-results, which the extension's
+  audit reports (tools/experiments/run.py, site "cases"). Words used: "porn" and "lesbian" (shown
+  list), "olgun" (search-only: must stay visible), "femboy" (Turkish ending).
+-->
+<ul>
+  <li class="case" data-case="server-plain" data-expect="hidden"><a href="/a">free porn here</a></li>
+  <li class="case" data-case="server-entity" data-expect="hidden"><a href="/b">p&#111;rn with an entity</a></li>
+  <li class="case" data-case="split-word" data-expect="hidden"><a href="/c">les<b>bian</b> stories</a></li>
+  <li class="case" data-case="turkish-suffix" data-expect="hidden"><a href="/d">bir femboyun hikayesi</a></li>
+  <li class="case" data-case="joined-name" data-expect="hidden"><a href="/e">r/actuallesbians</a></li>
+  <li class="case" data-case="clean" data-expect="visible"><a href="/f">kittens and puppies</a></li>
+  <li class="case" data-case="false-positive" data-expect="visible"><a href="/g">class assignment analysis</a></li>
+  <li class="case" data-case="search-only" data-expect="visible"><a href="/h">olgun domates</a></li>
+</ul>
+<div id="dynamic"></div>
+<div id="hosts"></div>
+<late-host class="case" data-case="shadow-late-attach" data-expect="hidden"></late-host>
+<iframe id="same" src="frame.html" style="width:100%;height:60px"></iframe>
+<iframe id="cross" style="width:100%;height:60px"></iframe>
+<ul id="big"></ul>
+<pre id="hisar-test-results"></pre>
+<script>
+  // A large clean list with a few blocked items in it, for timing.
+  var big = document.getElementById('big');
+  var html = '';
+  for (var i = 0; i < 5000; i++) html += '<li>' + (i % 100 === 7 ? 'item ' + i + ' porn' : 'ordinary item number ' + i + ' about gardening') + '</li>';
+  big.innerHTML = html;
+
+  // Cross-origin frame: the same page on another port.
+  document.getElementById('cross').src = location.protocol + '//' + location.hostname + ':8766/frame.html';
+
+  var closedRoots = {};
+  var texts = {};
+  // Shadow roots attached in the constructor, before the element is in the page.
+  customElements.define('open-host', class extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }).innerHTML = '<ul><li><a href="/i">' + texts.next + '</a></li></ul>'; }
+  });
+  customElements.define('closed-host', class extends HTMLElement {
+    constructor() { super(); var r = this.attachShadow({ mode: 'closed' }); r.innerHTML = '<ul><li><a href="/j">' + texts.next + '</a></li></ul>'; closedRoots.last = r; }
+  });
+  customElements.define('nested-host', class extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }).innerHTML = '<open-host></open-host>'; }
+  });
+  function add(tag, kase, text, expect) {
+    texts.next = text;
+    var el = document.createElement(tag);
+    if (tag === 'closed-host') closedRoots[kase] = closedRoots.last;
+    el.className = 'case';
+    el.dataset.case = kase;
+    el.dataset.expect = expect;
+    document.getElementById('hosts').appendChild(el);
+  }
+  add('open-host', 'shadow-open', 'porn in an open shadow root', 'hidden');
+  add('closed-host', 'shadow-closed', 'porn in a closed shadow root', 'hidden');
+  add('nested-host', 'shadow-nested', 'porn two shadow roots deep', 'hidden');
+  add('open-host', 'shadow-clean', 'kittens in a shadow root', 'visible');
+
+  // Content that arrives later, as feeds and suggestions do.
+  setTimeout(function () {
+    var li = document.createElement('li');
+    li.className = 'case'; li.dataset.case = 'added-later'; li.dataset.expect = 'hidden';
+    li.innerHTML = '<a href="/k">lesbian video added later</a>';
+    document.getElementById('dynamic').appendChild(li);
+    var changing = document.createElement('li');
+    changing.className = 'case'; changing.dataset.case = 'text-changed'; changing.dataset.expect = 'hidden';
+    changing.innerHTML = '<a href="/l">clean for now</a>';
+    document.getElementById('dynamic').appendChild(changing);
+    setTimeout(function () { changing.firstChild.firstChild.data = 'now it says porn'; }, 1000);
+  }, 1000);
+
+  // A shadow root attached after the element is in the page: upgrade on define, as many
+  // component libraries load.
+  setTimeout(function () {
+    customElements.define('late-host', class extends HTMLElement {
+      constructor() { super(); this.attachShadow({ mode: 'open' }).innerHTML = '<ul><li><a href="/m">porn attached late</a></li></ul>'; }
+    });
+  }, 2000);
+
+  var frames = {};
+  window.addEventListener('message', function (e) { if (e.data && e.data.hisarFrame !== undefined) frames[e.data.hisarFrame] = e.data.visible; });
+  /** The nearest element (through shadow hosts) that hides [el], for explaining an overblock. */
+  function hider(el) {
+    for (var n = el; n; n = n.parentElement || (n.getRootNode() && n.getRootNode().host)) {
+      if (getComputedStyle(n).display === 'none') return n.tagName + (n.className ? '.' + n.className : '') + '"' + (n.textContent || '').trim().slice(0, 30) + '"';
+    }
+    return el ? 'nothing (' + el.tagName + ' "' + el.textContent.slice(0, 20) + '")' : 'missing';
+  }
+  function visible(el) { return el.checkVisibility ? el.checkVisibility() : el.offsetParent !== null; }
+  function target(el) {
+    var root = el.shadowRoot || closedRoots[el.dataset.case];
+    while (root && root.querySelector('open-host')) root = root.querySelector('open-host').shadowRoot;
+    return root ? root.querySelector('a') : el.querySelector('a') || el;
+  }
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      var results = {};
+      document.querySelectorAll('.case').forEach(function (el) {
+        var a = target(el);
+        var shown = !!a && visible(a);
+        var ok = (el.dataset.expect === 'hidden') !== shown;
+        results[el.dataset.case] = ok ? 'ok' : (shown ? 'LEAK' : 'OVERBLOCK by ' + hider(a));
+      });
+      results['frame-same'] = frames[location.port] === undefined ? 'unknown' : frames[location.port] ? 'LEAK' : 'ok';
+      results['frame-cross'] = frames['8766'] === undefined ? 'unknown' : frames['8766'] ? 'LEAK' : 'ok';
+      document.getElementById('hisar-test-results').textContent = JSON.stringify(results);
+    }, 4000);
+  });
+</script>
+</body></html>

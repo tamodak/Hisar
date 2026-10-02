@@ -28,6 +28,7 @@ import org.tamodak.hisar.ui.components.FaviconLoader
 import org.tamodak.hisar.ui.navigation.HisarApp
 import org.tamodak.hisar.ui.theme.HisarTheme
 import org.tamodak.hisar.web.GeckoEngine
+import org.json.JSONObject
 import javax.inject.Inject
 
 /**
@@ -94,6 +95,8 @@ class MainActivity : ComponentActivity(), SystemLaunchers {
 
     /** Links opened from other apps, and the search widget's three buttons. */
     private fun handleIntent(intent: Intent?) {
+        // Debug builds: tools/experiments switches filtering strategies with each page it opens.
+        if (BuildConfig.DEBUG) intent?.getStringExtra(EXTRA_EXPERIMENT)?.let { engine.setExperiment(JSONObject(it)) }
         when (intent?.action) {
             Intent.ACTION_VIEW -> intent.dataString
                 ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
@@ -156,5 +159,6 @@ class MainActivity : ComponentActivity(), SystemLaunchers {
         const val ACTION_SEARCH = "org.tamodak.hisar.action.SEARCH"
         const val ACTION_VOICE_SEARCH = "org.tamodak.hisar.action.VOICE_SEARCH"
         const val ACTION_IMAGE_SEARCH = "org.tamodak.hisar.action.IMAGE_SEARCH"
+        private const val EXTRA_EXPERIMENT = "hisar.experiment"
     }
 }

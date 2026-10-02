@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><ul><li><a href="/n">porn inside a frame</a></li></ul>
+<script>
+  // Tells the parent page whether the item is still visible here (it can't look into a
+  // cross-origin frame itself).
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      var a = document.querySelector('a');
+      parent.postMessage({ hisarFrame: location.port, visible: !!a && a.checkVisibility() }, '*');
+    }, 3000);
+  });
+</script>

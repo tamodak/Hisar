@@ -24,6 +24,25 @@
   var shownBlocked = matchers.shown;
   var isTop = window === window.top;
 
+  /*
+   * How the page is filtered. The defaults won a measured comparison on real sites and on a page
+   * of hard cases (tools/experiments, 2026-10): no blocked text left visible, no page errors.
+   * Debug builds can switch them to compare alternatives again:
+   * - filter: hide anything at all (false measures the page untouched);
+   * - hide: 'inline' style, or a 'sheet' rule on a marker attribute (equal results);
+   * - empty: also blank a hidden item's text — off: changing text a framework rendered (React)
+   *   makes it throw (26 errors per load on bbc.com), and hiding alone left nothing visible;
+   * - shadow: find shadow roots by 'sweep'ing the page as it loads, by a 'main'-world hook on
+   *   attachShadow (same results, but code in the page's world), or 'none' (leaks);
+   * - scan: judge the smallest readable 'block' (paragraph, heading, link, list entry) — 'item'
+   *   (the item, else the parent element) left headlines visible on news sites;
+   * - collapse: a card left with almost no text once its title is hidden (a video's thumbnail)
+   *   goes too.
+   */
+  var config = Object.assign({ filter: true, hide: 'inline', empty: false, shadow: 'sweep', scan: 'block', collapse: true }, HISAR_DATA.config || {});
+  var measuring = HISAR_DATA.measure === true;
+  var metrics = { scanMs: 0, checks: 0, hidden: 0, hiddenChars: 0, errors: 0, rejections: 0, roots: 0, errorSamples: [], hiddenSamples: [] };
+
   /** Reports of what was stopped are at most this often. */
   var REPORT_INTERVAL_MILLIS = 1500;
   /** Text longer than this is a section of the page, not an item in it. */
@@ -35,6 +54,10 @@
   var MAX_SAVED_BYTES = 24 * 1024 * 1024;
   /** Sweeps for late shadow roots after the page has loaded. */
   var SWEEP_DELAYS_MILLIS = [1000, 3000];
+  /** When measuring: how long after load the page is audited. */
+  var AUDIT_DELAY_MILLIS = 5000;
+  /** A card with no more than this much other text left goes with its hidden title. */
+  var COLLAPSE_TEXT = 40;
 
   // --- Telling the app ---------------------------------------------------------------------------
 
@@ -75,8 +98,10 @@
 
   /** Shadow roots, open or closed (an extension may see closed ones), get watched like the page. */
   function adoptShadowRoot(host) {
+    if (config.shadow === 'none' || !config.filter) return;
     var root = host.openOrClosedShadowRoot;
     if (!root || observedRoots.has(root)) return;
+    metrics.roots++;
     roots.push(root);
     observe(root);
     queue(root);
@@ -90,15 +115,27 @@
     var walker = document.createTreeWalker(document.documentElement || document, NodeFilter.SHOW_ELEMENT);
     for (var n = walker.nextNode(); n; n = walker.nextNode()) if (n.tagName.indexOf('-') > 0) adoptShadowRoot(n);
   }
-  document.addEventListener('DOMContentLoaded', sweepShadowRoots);
-  window.addEventListener('load', function () {
-    sweepShadowRoots();
-    SWEEP_DELAYS_MILLIS.forEach(function (delay) { setTimeout(sweepShadowRoots, delay); });
-  });
-  window.addEventListener('focusin', function (e) {
-    var path = e.composedPath ? e.composedPath() : [];
-    path.forEach(function (n) { if (n && n.nodeType === 1 && n.tagName.indexOf('-') > 0) adoptShadowRoot(n); });
-  }, true);
+  if (config.shadow === 'sweep') {
+    document.addEventListener('DOMContentLoaded', sweepShadowRoots);
+    window.addEventListener('load', function () {
+      sweepShadowRoots();
+      SWEEP_DELAYS_MILLIS.forEach(function (delay) { setTimeout(sweepShadowRoots, delay); });
+    });
+  }
+  // The 'main' strategy: a page-world script (shadow-hook.js) announces each shadow root attached
+  // to an element already in the page; ones attached before insertion are found on insertion.
+  if (config.shadow === 'main') {
+    window.addEventListener('__hisar_shadow', function (e) {
+      var host = e.composedPath ? e.composedPath()[0] : e.target;
+      if (host && host.nodeType === 1) adoptShadowRoot(host);
+    }, true);
+  }
+  if (config.shadow !== 'none') {
+    window.addEventListener('focusin', function (e) {
+      var path = e.composedPath ? e.composedPath() : [];
+      path.forEach(function (n) { if (n && n.nodeType === 1 && n.tagName.indexOf('-') > 0) adoptShadowRoot(n); });
+    }, true);
+  }
 
   function isField(el) {
     if (!el || el.nodeType !== 1) return false;
@@ -217,12 +254,28 @@
     return false;
   }
 
+  var HIDDEN_RULE = '[data-hisar-hidden] { display: none !important; }';
+  var sheeted = new WeakSet();
+  /** The 'sheet' strategy: one rule per document or shadow root, hiding marked items. */
+  function ensureSheet(root) {
+    if (sheeted.has(root)) return;
+    sheeted.add(root);
+    var style = document.createElement('style');
+    style.textContent = HIDDEN_RULE;
+    (root === document ? (document.head || document.documentElement) : root).appendChild(style);
+  }
+
   /** Hides an item and empties it, so nothing of it can be read, copied, saved or shown later. */
   function hide(item) {
     if (hidden.has(item)) return;
     hidden.add(item);
-    item.style.setProperty('display', 'none', 'important');
+    metrics.hidden++;
+    metrics.hiddenChars += (item.textContent || '').length;
+    if (measuring && metrics.hiddenSamples.length < 12) metrics.hiddenSamples.push(item.tagName + ': ' + (item.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 50));
     item.setAttribute('data-hisar-hidden', '');
+    if (config.hide === 'sheet') ensureSheet(item.getRootNode());
+    else item.style.setProperty('display', 'none', 'important');
+    if (!config.empty) return;
     var walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
     for (var t = walker.nextNode(); t; t = walker.nextNode()) if (t.data) t.data = '';
     item.querySelectorAll('img, source, video').forEach(function (media) {
@@ -231,18 +284,79 @@
     });
   }
 
+  /**
+   * The 'block' strategy's unit: the smallest block a reader sees as one piece — a link, list
+   * entry, card, paragraph, heading or table cell — never a container judged by its children.
+   */
+  var BLOCK = ITEM + ', p, h1, h2, h3, h4, h5, h6, td, th, dd, dt, blockquote, figcaption, caption, label, summary, pre';
+  /** Units judged in the current batch: a paragraph with many links is read once, not per link. */
+  var judged = new Set();
+  function checkBlock(textNode, el) {
+    // 'item-block': the link or card around the text when it is item-sized (it takes a video's
+    // thumbnail with its title), else the smallest block.
+    var unit = null;
+    if (config.scan === 'item-block') {
+      unit = el.closest(ITEM);
+      if (unit && (unit.textContent || '').length > MAX_ITEM_TEXT) unit = null;
+    }
+    unit = unit || el.closest(BLOCK);
+    if (unit === document.body || unit === document.documentElement) unit = null;
+    if (unit) {
+      if (judged.has(unit)) return;
+      judged.add(unit);
+    }
+    var text = unit ? unit.textContent || '' : '';
+    if (!unit || text.length > MAX_ITEM_TEXT) {
+      // Text loose in a container: judged alone; its own element goes only if that holds nothing else.
+      if (shownBlocked(textNode.data) && el.childElementCount === 0 && el !== document.body) { hide(el); report(); }
+      return;
+    }
+    if (checked.get(unit) === text) return;
+    checked.set(unit, text);
+    var label = text + ' ' + (unit.getAttribute('aria-label') || '') + ' ' + (unit.getAttribute('title') || '');
+    if (shownBlocked(label)) {
+      hide(unit);
+      if (config.collapse) collapse(unit);
+      report();
+    }
+  }
+
+  /**
+   * A card or link that is left with almost nothing to read once a block in it is hidden (a
+   * video's thumbnail without its title) goes too.
+   */
+  function collapse(unit) {
+    var card = unit.parentElement && unit.parentElement.closest(ITEM);
+    if (!card || card === document.body || hidden.has(card)) return;
+    var rest = 0;
+    var walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    for (var t = walker.nextNode(); t && rest <= COLLAPSE_TEXT; t = walker.nextNode()) {
+      if (!inHidden(t.parentElement)) rest += t.data.trim().length;
+    }
+    if (rest <= COLLAPSE_TEXT) hide(card);
+  }
+
   // Items are judged by their whole text: sites split it into pieces ("les" bolded + "bian…" in a
   // suggestion), so no single piece holds the word.
   function check(textNode) {
     var el = textNode.parentElement;
     if (!el || el.tagName === 'SCRIPT' || el.tagName === 'STYLE' || isField(el)) return;
-    if (inHidden(el)) { if (textNode.data) textNode.data = ''; return; }
+    if (!/\S/.test(textNode.data)) return;
+    if (inHidden(el)) { if (config.empty && textNode.data) textNode.data = ''; return; }
     if (el.tagName === 'TITLE') {
-      if (shownBlocked(textNode.data)) textNode.data = '';
+      if (config.empty && shownBlocked(textNode.data)) textNode.data = '';
       return;
     }
+    metrics.checks++;
+    if (config.scan === 'block' || config.scan === 'item-block') return checkBlock(textNode, el);
     var item = itemOf(el);
     if (!item) return;
+    // The 'node' strategy: the text itself first; the item's whole text only when the text is one
+    // piece of it (a word split across elements).
+    if (config.scan === 'node') {
+      if (shownBlocked(textNode.data)) { hide(item); report(); return; }
+      if (el === item) return;
+    }
     var text = item.textContent || '';
     if (text.length > MAX_ITEM_TEXT) { item = el; text = el.textContent || ''; }
     // Never a whole section of the page, only the item around the words.
@@ -281,7 +395,10 @@
     scheduled = false;
     var batch = pending;
     pending = [];
+    var start = performance.now();
     batch.forEach(scan);
+    judged.clear();
+    metrics.scanMs += performance.now() - start;
   }
   // Batched to the next frame: before it is painted, so hidden items are never seen.
   function schedule() {
@@ -300,8 +417,77 @@
       });
     }).observe(root, { childList: true, subtree: true, characterData: true });
   }
-  observe(document);
-  document.addEventListener('DOMContentLoaded', function () { queue(document.body || document.documentElement); });
+  if (config.filter) {
+    observe(document);
+    document.addEventListener('DOMContentLoaded', function () { queue(document.body || document.documentElement); });
+  }
+
+  // --- Measuring (debug builds, tools/experiments) ----------------------------------------------------
+
+  if (measuring && isTop) {
+    window.addEventListener('error', function (e) {
+      if (e.filename === undefined) return;
+      metrics.errors++;
+      if (metrics.errorSamples.length < 4) metrics.errorSamples.push(String(e.message).slice(0, 120) + ' @ ' + String(e.filename).slice(-60) + ':' + e.lineno);
+    }, true);
+    window.addEventListener('unhandledrejection', function () { metrics.rejections++; }, true);
+    window.addEventListener('load', function () { setTimeout(audit, AUDIT_DELAY_MILLIS); });
+  }
+
+  /**
+   * What is left on screen after the page settled: visible items whose text has a blocked word,
+   * looked for everywhere (every shadow root too), whatever strategy is in use.
+   */
+  function audit() {
+    var leaks = new Set();
+    var samples = [];
+    function walk(root) {
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      for (var n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (n.nodeType === 1) {
+          var shadow = n.openOrClosedShadowRoot;
+          if (shadow) walk(shadow);
+          continue;
+        }
+        var el = n.parentElement;
+        if (!el || !n.data.trim() || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+        if (el.checkVisibility && !el.checkVisibility()) continue;
+        var item = el.closest(ITEM) || el;
+        if (leaks.has(item)) continue;
+        // What is rendered: innerText leaves out hidden descendants (slow, but only when measuring).
+        var text = (item.innerText || '').slice(0, MAX_ITEM_TEXT);
+        if (shownBlocked(text)) {
+          leaks.add(item);
+          if (samples.length < 3) samples.push(text.replace(/\s+/g, ' ').trim().slice(0, 80));
+        }
+      }
+    }
+    var start = performance.now();
+    walk(document.documentElement);
+    var nav = performance.getEntriesByType('navigation')[0];
+    browser.runtime.sendNativeMessage('hisar', {
+      type: 'metrics',
+      url: location.href,
+      config: config,
+      scanMs: Math.round(metrics.scanMs),
+      checks: metrics.checks,
+      hidden: metrics.hidden,
+      roots: metrics.roots,
+      errors: metrics.errors,
+      errorSamples: metrics.errorSamples,
+      hiddenSamples: metrics.hiddenSamples,
+      hiddenChars: metrics.hiddenChars,
+      rejections: metrics.rejections,
+      leaks: leaks.size,
+      samples: samples,
+      auditMs: Math.round(performance.now() - start),
+      domContentLoadedMs: nav ? Math.round(nav.domContentLoadedEventEnd) : -1,
+      loadMs: nav ? Math.round(nav.loadEventEnd) : -1,
+      // The test page's own verdict (tools/experiments/testpage), else the start of the page.
+      probe: (document.getElementById('hisar-test-results') || {}).textContent ||
+        (document.body ? document.body.textContent : '').replace(/\s+/g, ' ').trim().slice(0, 160),
+    }).catch(function () {});
+  }
 
   // --- The app's requests (top frame only) -----------------------------------------------------------
 
