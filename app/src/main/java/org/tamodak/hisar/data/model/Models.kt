@@ -32,7 +32,7 @@ data class SavedTab(val id: Long, val url: String, val title: String, val groupI
 
 data class SavedSession(val tabs: List<SavedTab>, val groups: List<TabGroup>, val selectedId: Long?)
 
-/** Fonts offered for simple mode, as CSS family names Android's WebView resolves. */
+/** Fonts offered for simple mode, as CSS family names the browser engine resolves. */
 enum class SimpleFont(val css: String) {
     SANS("sans-serif"),
     SERIF("serif"),
@@ -45,7 +45,7 @@ enum class SimpleFont(val css: String) {
  */
 data class UserSettings(
     val searchEngine: SearchEngine = SearchEngine.GOOGLE,
-    /** Page text size in percent, as WebSettings.textZoom takes it. */
+    /** Page text size in percent. */
     val textZoom: Int = 100,
     /** Whether typed text is sent to the search engine for suggestions. */
     val searchSuggestions: Boolean = true,

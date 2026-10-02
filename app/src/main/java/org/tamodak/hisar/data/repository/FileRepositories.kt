@@ -7,7 +7,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Environment
 import android.util.LruCache
-import android.webkit.CookieManager
 import androidx.core.content.FileProvider
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
@@ -37,11 +36,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Pages saved for reading without a connection, as MHTML archives in app storage.
- *
- * Chromium renders MHTML only from file: or content: URLs, so WebViewAssetLoader (https) can't
- * serve them. They are opened through a non-exported FileProvider covering just this folder;
- * WebView never gets file access, and content access only in the tab opening a saved page.
+ * Pages saved for reading without a connection: each one HTML file, with its images and styles
+ * inlined (made by the extension's content script), in app storage. They are opened through a
+ * non-exported FileProvider covering just this folder; pages get no other file or content access.
  */
 @Singleton
 class OfflinePageRepository @Inject constructor(
@@ -55,13 +52,27 @@ class OfflinePageRepository @Inject constructor(
         list.map { OfflinePage(it.id, it.url, it.title, it.fileName, it.size, it.savedAt) }
     }
 
-    /** Where WebView should write the next archive. */
-    suspend fun newFile(): File = withContext(io) {
+    /**
+     * Saves [html] as the page at [url]. Saving a page again replaces the earlier copy.
+     */
+    suspend fun save(url: String, title: String, html: String) = withContext(io) {
         directory.mkdirs()
-        File(directory, "${System.currentTimeMillis()}.mht")
+        val file = File(directory, "${System.currentTimeMillis()}.html")
+        file.writeText(html)
+        add(url, title, file)
     }
 
-    suspend fun add(url: String, title: String, archive: File) = withContext(io) {
+    /**
+     * Pages saved by earlier versions as MHTML, which the browser engine can't open, are removed.
+     */
+    suspend fun removeArchives() = withContext(io) {
+        dao.all().filter { it.fileName.endsWith(".mht") }.forEach { old ->
+            File(directory, old.fileName).delete()
+            dao.delete(old.id)
+        }
+    }
+
+    private suspend fun add(url: String, title: String, archive: File) {
         // Saving a page again replaces the earlier copy.
         dao.byUrl(url).forEach { old ->
             File(directory, old.fileName).delete()
@@ -95,20 +106,22 @@ class OfflinePageRepository @Inject constructor(
 class DownloadRepository @Inject constructor(
     private val manager: DownloadManager,
     private val dao: DownloadDao,
+    private val cookies: CookieStore,
     @IoDispatcher private val io: CoroutineDispatcher,
 ) {
     val downloads: Flow<List<DownloadItem>> = dao.observeAll().map { list ->
         list.map { DownloadItem(it.downloadId, it.fileName, it.url, it.mimeType, it.startedAt) }
     }
 
-    suspend fun enqueue(url: String, fileName: String, mimeType: String?, userAgent: String?, referer: String?): DownloadItem =
-        withContext(io) {
+    suspend fun enqueue(url: String, fileName: String, mimeType: String?, userAgent: String?, referer: String?): DownloadItem {
+        val cookie = cookies.cookieHeader(url)
+        return withContext(io) {
             val request = DownloadManager.Request(url.toUri()).apply {
                 setTitle(fileName)
                 mimeType?.let(::setMimeType)
                 // DownloadManager has its own HTTP stack; pass the page's session along so
                 // downloads that need a login work.
-                CookieManager.getInstance().getCookie(url)?.let { addRequestHeader("Cookie", it) }
+                cookie?.let { addRequestHeader("Cookie", it) }
                 userAgent?.let { addRequestHeader("User-Agent", it) }
                 referer?.takeIf { it.startsWith("http") }?.let { addRequestHeader("Referer", it) }
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
@@ -118,6 +131,7 @@ class DownloadRepository @Inject constructor(
             dao.insert(DownloadEntity(item.id, item.fileName, item.url, item.mimeType, item.startedAt))
             item
         }
+    }
 
     suspend fun find(id: Long): DownloadItem? = withContext(io) {
         dao.byId(id)?.let { DownloadItem(it.downloadId, it.fileName, it.url, it.mimeType, it.startedAt) }

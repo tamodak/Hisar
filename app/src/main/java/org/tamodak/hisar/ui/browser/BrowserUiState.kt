@@ -6,7 +6,7 @@ import androidx.core.net.toUri
 import org.tamodak.hisar.data.model.TabGroup
 import org.tamodak.hisar.search.Omnibox
 
-/** One tab as the UI shows it. The live page itself is in the WebView the UI layer keeps for it. */
+/** One tab as the UI shows it. The live page itself is in the session the UI layer keeps for it. */
 data class TabState(
     val id: Long,
     val url: String = "",
@@ -33,7 +33,7 @@ data class TabState(
     val newTabPageCoversPage: Boolean = false,
     /** A page has loaded in this tab at some point, so there is something under the new tab page. */
     val hasPage: Boolean = false,
-    /** A URL the tab should load next. The UI layer loads it into the tab's WebView and clears it. */
+    /** A URL the tab should load next. The UI layer loads it into the tab's page and clears it. */
     val pendingLoad: String? = url.ifEmpty { null },
     /** Set while the tab shows a saved (offline) page. */
     val offlinePageId: Long? = null,

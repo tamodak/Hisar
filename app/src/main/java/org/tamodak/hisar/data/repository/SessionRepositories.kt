@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.webkit.CookieManager
 import androidx.core.graphics.scale
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -120,24 +119,29 @@ class SuggestionRepository @Inject constructor(@IoDispatcher private val io: Cor
 @Singleton
 class ImageSearchRepository @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val cookies: CookieStore,
     @IoDispatcher private val io: CoroutineDispatcher,
 ) {
     /** The results URL for a picture, or null if it could not be read or uploaded. */
-    suspend fun search(image: Bitmap, userAgent: String): String? = withContext(io) { upload(encode(image), userAgent) }
+    suspend fun search(image: Bitmap, userAgent: String): String? = upload(encode(image), userAgent)
 
-    suspend fun search(image: Uri, userAgent: String): String? = withContext(io) {
-        context.contentResolver.openInputStream(image)?.use(BitmapFactory::decodeStream)?.let { upload(encode(it), userAgent) }
-    }
+    suspend fun search(image: Uri, userAgent: String): String? =
+        withContext(io) { context.contentResolver.openInputStream(image)?.use(BitmapFactory::decodeStream) }
+            ?.let { upload(encode(it), userAgent) }
 
     /** Fetches an image from the page (long-press "Search image") and searches with it. */
-    suspend fun searchImageUrl(imageUrl: String, userAgent: String): String? = withContext(io) {
-        val connection = URL(imageUrl).openConnection() as HttpURLConnection
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 15_000
-        connection.setRequestProperty("User-Agent", userAgent)
-        CookieManager.getInstance().getCookie(imageUrl)?.let { connection.setRequestProperty("Cookie", it) }
-        val bytes = connection.inputStream.use { it.readBytes() }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { upload(encode(it), userAgent) }
+    suspend fun searchImageUrl(imageUrl: String, userAgent: String): String? {
+        val cookie = cookies.cookieHeader(imageUrl)
+        val image = withContext(io) {
+            val connection = URL(imageUrl).openConnection() as HttpURLConnection
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 15_000
+            connection.setRequestProperty("User-Agent", userAgent)
+            cookie?.let { connection.setRequestProperty("Cookie", it) }
+            val bytes = connection.inputStream.use { it.readBytes() }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }
+        return image?.let { upload(encode(it), userAgent) }
     }
 
     private fun encode(image: Bitmap): ByteArray {
@@ -149,7 +153,18 @@ class ImageSearchRepository @Inject constructor(
         }
     }
 
-    private fun upload(jpeg: ByteArray, userAgent: String): String? {
+    private suspend fun upload(jpeg: ByteArray, userAgent: String): String? {
+        // Lens keys the results to the Google session: upload with the engine's Google cookies,
+        // and hand any cookie the upload sets back to the engine, which will open the results.
+        val cookie = cookies.cookieHeader(GOOGLE)
+        val (location, setCookies) = withContext(io) { post(jpeg, userAgent, cookie) }
+        cookies.store(GOOGLE, setCookies)
+        cookies.store(LENS, setCookies)
+        return location
+    }
+
+    /** The upload itself; returns the results address and the cookies Lens set. */
+    private fun post(jpeg: ByteArray, userAgent: String, cookie: String?): Pair<String?, List<String>> {
         val boundary = "HisarBoundary${System.nanoTime()}"
         val language = Locale.getDefault().language
         val connection = URL("https://lens.google.com/v3/upload?hl=$language&re=df&st=${System.currentTimeMillis()}&ep=gsbubb")
@@ -161,10 +176,7 @@ class ImageSearchRepository @Inject constructor(
         connection.readTimeout = 20_000
         connection.setRequestProperty("User-Agent", userAgent)
         connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-        // Lens keys the results to the Google session: upload with the WebView's Google cookies,
-        // and hand any cookie the upload sets back to the WebView that will open the results.
-        val cookies = CookieManager.getInstance()
-        cookies.getCookie("https://www.google.com")?.let { connection.setRequestProperty("Cookie", it) }
+        cookie?.let { connection.setRequestProperty("Cookie", it) }
         connection.outputStream.use { out ->
             out.write(
                 ("--$boundary\r\n" +
@@ -176,16 +188,14 @@ class ImageSearchRepository @Inject constructor(
         }
         val code = connection.responseCode
         val location = connection.getHeaderField("Location")
-        connection.headerFields["Set-Cookie"].orEmpty().forEach { cookie ->
-            cookies.setCookie("https://www.google.com", cookie)
-            cookies.setCookie("https://lens.google.com", cookie)
-        }
-        cookies.flush()
+        val setCookies = connection.headerFields["Set-Cookie"].orEmpty()
         connection.disconnect()
-        return location?.takeIf { code in 300..399 && it.startsWith("https://") }
+        return location?.takeIf { code in 300..399 && it.startsWith("https://") } to setCookies
     }
 
     private companion object {
         const val MAX_SIDE = 1000
+        const val GOOGLE = "https://www.google.com/"
+        const val LENS = "https://lens.google.com/"
     }
 }

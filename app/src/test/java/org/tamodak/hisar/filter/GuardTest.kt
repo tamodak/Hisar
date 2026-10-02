@@ -36,17 +36,6 @@ class GuardTest {
     @Test fun backgroundSearchWithoutSafeSearchIsDropped() =
         assertEquals(BlockReason.UNSAFE_SEARCH_ENGINE, reason(guard.checkSubresource("https://www.google.com/search?q=x&async=1")))
 
-    @Test fun pageTextNeedsSeveralHits() {
-        assertEquals(Decision.Allow, guard.checkPageText("https://news.example/a", "An article that mentions sex education once."))
-        assertTrue(guard.checkPageText("https://example.org/page", "porn sex nude") is Decision.Block)
-    }
-
-    @Test fun aSiteBlockedForWhatItShowedOnceIsNotBlockedEverywhere() {
-        // A single-page app's home showing results it shouldn't: the tab blocks it, not the filter.
-        guard.checkPageText("https://m.youtube.com/", "porn sex nude")
-        assertEquals(Decision.Allow, guard.checkNavigation("https://m.youtube.com/"))
-    }
-
     @Test fun translateProxyCannotReachBlockedSites() {
         assertEquals("bad-site.example.com", Guard.translatedHost("bad--site-example-com.translate.goog"))
         assertEquals(BlockReason.HARMFUL_SITE, reason(guard.checkNavigation("https://www-badsite-com.translate.goog/?_x_tr_sl=auto")))
@@ -77,19 +66,14 @@ class GuardTest {
         assertEquals(Decision.Allow, guard.checkSubresource(clean))
     }
 
-    @Test fun searchBlockedForItsResultsStaysBlockedUnderAnyAddress() {
-        guard.checkPageText("https://www.google.com/search?q=badquery&safe=active&sei=abc", "porn sex nude")
-        assertEquals(BlockReason.PAGE_CONTENT, reason(guard.checkNavigation("https://www.google.com/search?q=badquery&safe=active")))
-        assertEquals(BlockReason.PAGE_CONTENT, reason(guard.checkNavigation("https://www.google.com/search?q=BadQuery&safe=active&ei=xyz")))
-    }
-
-    @Test fun searchOnlyWordsStopSearchesButDontBlockPages() {
+    @Test fun searchOnlyWordsStopSearchesButDontHidePageText() {
         val guard = Guard(DomainList(emptyList()), DomainList(emptyList()), WordFilter(listOf("porn")), WordFilter(listOf("olgun")))
         assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkNavigation("https://www.google.com/search?q=olgun+kadin")))
         assertEquals(BlockReason.BLOCKED_WORDS, reason(guard.checkSubresource("https://www.google.com/complete/s?q=olgun")))
         assertTrue(!guard.isClean("olgun"))
-        // A recipe that says "olgun" often is still a recipe.
-        assertEquals(Decision.Allow, guard.checkPageText("https://recipes.example/domates", "olgun olgun olgun olgun olgun olgun domates"))
+        // A recipe that says "olgun" is still a recipe: the words pages are checked for leave it out.
+        assertTrue(guard.pagePhrases.none { "olgun" in it })
+        assertTrue(guard.searchPhrases.any { "olgun" in it })
     }
 
     @Test fun nonHttpSchemesAreNotFiltered() = assertEquals(Decision.Allow, guard.checkNavigation("about:blank"))

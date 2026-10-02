@@ -121,14 +121,6 @@
     <string name="download_state_progress">%1$s / %2$s</string>
     <string name="cancel_download">İptal et</string>
 
-    <string name="blocked_title">Bu sayfa engellendi</string>
-    <string name="blocked_harmful">Hisar bu siteyi zararlı siteler listesinde olduğu için engelledi.</string>
-    <string name="blocked_ads">Hisar bu siteyi reklam, izleyici veya kötü amaçlı yazılım sunduğu için engelledi.</string>
-    <string name="blocked_words">Hisar bu adresi engellenen kelimeler içerdiği için engelledi.</string>
-    <string name="blocked_content">Hisar bu sayfayı içeriğinde engellenen kelimeler olduğu için engelledi.</string>
-    <string name="blocked_search_engine">Hisar bu arama motorunda Güvenli Arama\'yı zorunlu kılamadığı için onu engelledi.</string>
-    <string name="go_back">Geri dön</string>
-
     <!-- Chrome features -->
     <string name="opened_in_group">Gruptaki yeni sekmede açıldı</string>
     <string name="voice_unavailable">Bu cihazda sesli arama kullanılamıyor</string>
@@ -180,7 +172,24 @@
     <string name="shortcut_url">URL</string>
     <string name="shortcut_url_invalid">Bir web adresi girin</string>
     <string name="save">Kaydet</string>
+    <string name="page_error_title">Bu siteye ulaşılamıyor</string>
+    <string name="page_error_offline">İnternet bağlantınız yok. Bağlantınızı kontrol edip tekrar deneyin.</string>
+    <string name="page_error_host">Sitenin adresi bulunamadı.</string>
+    <string name="page_error_security">Bu siteyle bağlantı güvenli değil, bu yüzden Hisar siteyi açmadı.</string>
+    <string name="page_error_safebrowsing">Google Güvenli Tarama bu sitenin tehlikeli olduğunu bildiriyor, bu yüzden Hisar siteyi açmadı.</string>
+    <string name="page_error_other">Site yanıt vermedi. Daha sonra tekrar deneyin.</string>
     <string name="search_blocked">Hisar bunu göndermedi: engellenen kelimeler içeriyor</string>
     <string name="site_blocked">Hisar bu siteyi engelledi</string>
     <string name="search_engine_blocked">Hisar bu arama motorunda Güvenli Arama\'yı zorunlu kılamıyor</string>
+    <string name="ok">Tamam</string>
+    <string name="prompt_leave_title">Bu sayfadan ayrılınsın mı?</string>
+    <string name="prompt_leave_message">Yaptığınız değişiklikler kaydedilmemiş olabilir.</string>
+    <string name="prompt_leave">Ayrıl</string>
+    <string name="prompt_stay">Kal</string>
+    <string name="prompt_repost_title">Form yeniden gönderilsin mi?</string>
+    <string name="prompt_repost_message">Bu sayfa girdiğiniz bilgileri yeniden gönderir. Yaptığı her şey, örneğin bir satın alma, tekrarlanabilir.</string>
+    <string name="prompt_resend">Yeniden gönder</string>
+    <string name="prompt_sign_in">Oturum aç</string>
+    <string name="prompt_username">Kullanıcı adı</string>
+    <string name="prompt_password">Şifre</string>
 </resources>

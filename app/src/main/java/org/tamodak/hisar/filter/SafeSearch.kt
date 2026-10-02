@@ -37,24 +37,6 @@ object SafeSearch {
             (parsed.isEngine("startpage") && parsed.path.startsWith("/sp/search"))
     }
 
-    /**
-     * The search terms if [url] is a results page of a search engine or YouTube, else null. Lets a
-     * search blocked for its results stay blocked whatever else Google adds to its address.
-     */
-    fun searchQuery(url: String): String? {
-        val parsed = Url.parse(url)
-        val query = when {
-            parsed.isEngine("google") && (parsed.path == "/search" || parsed.path == "/images") -> parsed.param("q")
-            parsed.isEngine("bing") && parsed.path.endsWith("/search") -> parsed.param("q")
-            parsed.isEngine("duckduckgo") -> parsed.param("q")
-            parsed.host.endsWith("search.yahoo.com") -> parsed.param("p")
-            parsed.host == "search.brave.com" -> parsed.param("q")
-            parsed.isEngine("youtube") && parsed.path == "/results" -> parsed.param("search_query")
-            else -> null
-        }
-        return query?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
-    }
-
     /** True when the host is `<engine>.<tld>` or a subdomain of one, e.g. `www.google.com.tr`. */
     private fun Url.isEngine(name: String): Boolean {
         val labels = host.split('.')

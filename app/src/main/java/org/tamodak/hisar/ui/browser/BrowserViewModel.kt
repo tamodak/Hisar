@@ -50,7 +50,6 @@ import org.tamodak.hisar.filter.BlockReason
 import org.tamodak.hisar.filter.Decision
 import org.tamodak.hisar.filter.SafeSearch
 import org.tamodak.hisar.search.Omnibox
-import java.io.File
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
@@ -60,8 +59,8 @@ import javax.inject.Inject
  * The browser's business logic and state: tabs and groups, what each tab is showing, and everything
  * that touches data (history, bookmarks, downloads, saved pages, the saved session).
  *
- * It never holds a WebView or a Context. The UI layer keeps the WebViews, reports their events
- * here, and loads whatever a tab's [TabState.pendingLoad] asks for.
+ * It never holds a page, a View or a Context. The UI layer keeps the tabs' pages, reports their
+ * events here, and loads whatever a tab's [TabState.pendingLoad] asks for.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -145,6 +144,7 @@ class BrowserViewModel @Inject constructor(
 
     init {
         viewModelScope.launch { restoreSession() }
+        viewModelScope.launch { offlinePageRepository.removeArchives() }
     }
 
     private suspend fun restoreSession() {
@@ -327,18 +327,19 @@ class BrowserViewModel @Inject constructor(
     /** Something was stopped before it left the phone; say so instead of showing a block page. */
     fun onNavigationBlocked(reason: BlockReason) = showMessage(
         when (reason) {
-            BlockReason.BLOCKED_WORDS, BlockReason.PAGE_CONTENT -> R.string.search_blocked
+            BlockReason.BLOCKED_WORDS -> R.string.search_blocked
             BlockReason.UNSAFE_SEARCH_ENGINE -> R.string.search_engine_blocked
             BlockReason.HARMFUL_SITE, BlockReason.AD_OR_TRACKER -> R.string.site_blocked
         },
     )
 
-    // --- Events from the tab's WebView -----------------------------------------------------------
+    // --- Events from the tab's page --------------------------------------------------------------
 
     fun onPageStarted(tabId: Long, url: String, favicon: Bitmap?) = updateTab(tabId) { tab ->
         val leftOffline = tab.offlinePageId != null && !isOfflineCopy(tab.offlinePageId, url)
         tab.copy(
-            url = url,
+            // The simplified view and error pages are data: pages; the tab still shows the page's own address.
+            url = if (url.startsWith("data:")) tab.url else url,
             loading = true,
             blockedOnPage = 0,
             readerMode = tab.pendingReader,
@@ -352,12 +353,16 @@ class BrowserViewModel @Inject constructor(
     fun onPageFinished(tabId: Long) = updateTab(tabId) { it.copy(loading = false) }
 
     fun onHistoryUpdated(tabId: Long, url: String, canGoBack: Boolean, canGoForward: Boolean, isReload: Boolean) {
+        if (url.startsWith("data:")) return onHistoryState(tabId, canGoBack, canGoForward)
         updateTab(tabId) { it.copy(url = url, historyBack = canGoBack, historyForward = canGoForward) }
         val tab = _uiState.value.tab(tabId) ?: return
         // The pre-SafeSearch URL is only a hop to the strict one; recording it would double entries.
         if (isReload || tab.offlinePageId != null || tab.readerMode || SafeSearch.enforce(url) != null) return
         viewModelScope.launch { history.record(url, tab.title) }
     }
+
+    fun onHistoryState(tabId: Long, canGoBack: Boolean, canGoForward: Boolean) =
+        updateTab(tabId) { it.copy(historyBack = canGoBack, historyForward = canGoForward) }
 
     fun onProgress(tabId: Long, progress: Int) = updateTab(tabId) { it.copy(progress = progress) }
 
@@ -372,10 +377,9 @@ class BrowserViewModel @Inject constructor(
         favicons.save(pageUrl?.let { it.toUri().host }, icon)
     }
 
-    /** From WebView's network threads; [MutableStateFlow.update] is safe to call from any thread. */
     fun onAdBlocked(tabId: Long) = updateTab(tabId) { it.copy(blockedOnPage = it.blockedOnPage + 1) }
 
-    /** The tab's WebView was lost with its renderer: the replacement reloads what it showed. */
+    /** The tab's page was lost with its content process: the replacement reloads what it showed. */
     fun onRendererGone(tabId: Long) = updateTab(tabId) { tab ->
         // A saved page reloads from its archive, not from the address the archive reports.
         val offline = tab.offlinePageId?.let { id -> offlinePages.value.firstOrNull { it.id == id } }
@@ -463,20 +467,15 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    /** Chrome's "Download page": [write] saves the archive into the file it is handed. */
-    fun savePageOffline(url: String, title: String, write: (File, (Boolean) -> Unit) -> Unit) {
+    /** Chrome's "Download page": [html] is the page as one file, or null if it couldn't be made. */
+    fun savePageOffline(url: String, title: String, html: String?) {
+        if (html == null) {
+            showMessage(R.string.page_save_failed)
+            return
+        }
         viewModelScope.launch {
-            val file = offlinePageRepository.newFile()
-            write(file) { saved ->
-                if (!saved) {
-                    showMessage(R.string.page_save_failed)
-                } else {
-                    viewModelScope.launch {
-                        offlinePageRepository.add(url, title, file)
-                        showMessage(R.string.page_saved, actionLabel = R.string.downloads, action = MessageAction.OpenDownloads)
-                    }
-                }
-            }
+            offlinePageRepository.save(url, title, html)
+            showMessage(R.string.page_saved, actionLabel = R.string.downloads, action = MessageAction.OpenDownloads)
         }
     }
 

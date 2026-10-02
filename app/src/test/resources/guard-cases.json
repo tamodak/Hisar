@@ -1,0 +1,52 @@
+{
+  "_comment": "Cases both rule sets must agree on: the app's Guard (GuardParityTest) and the browser extension's guard.js, matcher.js and html-filter.js (src/test/js/extension-test.js).",
+  "lists": {
+    "ads": ["doubleclick.net"],
+    "harmful": ["badsite.com"],
+    "words": ["porn", "sex", "nude", "lesbian", "femboy", "hot girls"],
+    "searchOnly": ["olgun", "meme"],
+    "substring": ["lesbian"],
+    "stems": ["femboy"]
+  },
+  "subresource": [
+    { "url": "https://ad.doubleclick.net/pixel", "expect": "ad" },
+    { "url": "https://cdn.badsite.com/a.jpg", "expect": "harmful" },
+    { "url": "https://cdn-badsite-com.translate.goog/a.jpg", "expect": "harmful" },
+    { "url": "https://example.com/app.js", "expect": "allow" },
+    { "url": "https://www.google.com/complete/s?q=nude&cp=4", "expect": "words" },
+    { "url": "https://www.google.com/complete/s?q=n&pq=nude", "expect": "words" },
+    { "url": "https://suggestqueries.google.com/complete/search?client=firefox&q=hot+girls", "expect": "words" },
+    { "url": "https://www.google.com/complete/s?q=olgun", "expect": "words" },
+    { "url": "https://www.google.com/complete/s?q=kittens", "expect": "allow" },
+    { "url": "https://cdn.example.com/sex-ed/book.png?id=nude123", "expect": "allow" },
+    { "url": "https://x.com/i/api/graphql/abc/SearchTimeline?variables=%7B%22rawQuery%22%3A%22free%20porn%22%2C%22count%22%3A20%7D", "expect": "words" },
+    { "url": "https://x.com/i/api/graphql/abc/SearchTimeline?variables=%7B%22rawQuery%22%3A%22kittens%22%7D", "expect": "allow" },
+    { "url": "https://www.reddit.com/svc/shreddit/search-typeahead?query=actuallesbians", "expect": "words" },
+    { "url": "https://www.google.com/search?q=x&async=1", "expect": "safesearch" },
+    { "url": "https://www.google.com/search?q=x&safe=active&async=1", "expect": "allow" },
+    { "url": "https://www.bing.com/search?q=x", "expect": "safesearch" },
+    { "url": "https://duckduckgo.com/?q=x&kp=1", "expect": "allow" },
+    { "url": "https://www.google.com/images/branding/logo.png", "expect": "allow" }
+  ],
+  "text": [
+    { "text": "free porn videos", "typed": true, "shown": true },
+    { "text": "PORN", "typed": true, "shown": true },
+    { "text": "olgun kadın", "typed": true, "shown": false },
+    { "text": "r/actuallesbians", "typed": true, "shown": true },
+    { "text": "bir femboyun hikayesi", "typed": true, "shown": true },
+    { "text": "gayet iyi", "typed": false, "shown": false },
+    { "text": "analysis of class assignments", "typed": false, "shown": false },
+    { "text": "hot girls", "typed": true, "shown": true },
+    { "text": "hot weather, girls' school", "typed": false, "shown": false },
+    { "text": "constructor toString valueOf __proto__ hasOwnProperty", "typed": false, "shown": false },
+    { "text": "kittens", "typed": false, "shown": false }
+  ],
+  "html": [
+    { "in": "<ul><li><a href=\"/a\">kittens</a></li><li><a href=\"/b\">free porn</a></li></ul>", "out": "<ul><li><a href=\"/a\">kittens</a></li><li><a href=\"/b\"><hisar-hidden></hisar-hidden></a></li></ul>" },
+    { "in": "<title>nude pics</title><p>ok</p>", "out": "<title></title><p>ok</p>" },
+    { "in": "<script>if (a<b) { s = 'porn'; }</script><p>porn</p>", "out": "<script>if (a<b) { s = 'porn'; }</script><p><hisar-hidden></hisar-hidden></p>" },
+    { "in": "<p>p&#111;rn</p>", "out": "<p><hisar-hidden></hisar-hidden></p>" },
+    { "in": "<!-- porn --><p>meme</p>", "out": "<!-- porn --><p>meme</p>" },
+    { "in": "<textarea>porn</textarea>", "out": "<textarea>porn</textarea>" }
+  ]
+}

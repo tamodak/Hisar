@@ -31,6 +31,16 @@ android {
             }
         }
     }
+    // GeckoView ships native libraries for three CPU types (about 160 MB each, uncompressed). One
+    // APK per type keeps each install to its own.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -71,7 +81,7 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.androidx.swiperefreshlayout)
-    implementation(libs.androidx.webkit)
+    implementation(libs.geckoview)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.org.json)

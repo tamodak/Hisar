@@ -32,9 +32,9 @@ class FilterRepository @Inject constructor(
     private val loading: Deferred<Guard> = scope.async(io, start = CoroutineStart.LAZY) {
         val start = System.currentTimeMillis()
         val assets = context.assets
-        val ads = assets.open("lists/ads.txt").use(DomainList::load)
-        val harmful = assets.open("lists/harmful.txt").use(DomainList::load)
-        fun lines(name: String) = assets.open("lists/$name").use(WordFilter::readLines)
+        val ads = assets.open("extensions/hisar/lists/ads.txt").use(DomainList::load)
+        val harmful = assets.open("extensions/hisar/lists/harmful.txt").use(DomainList::load)
+        fun lines(name: String) = assets.open("extensions/hisar/lists/$name").use(WordFilter::readLines)
         val substring = lines("substring_words.txt")
         val stems = lines("suffix_stems.txt")
         val words = WordFilter(lines("words.txt"), substring, stems)

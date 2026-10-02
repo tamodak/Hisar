@@ -171,6 +171,9 @@ interface OfflinePageDao {
     @Query("SELECT * FROM offline_pages WHERE url = :url")
     suspend fun byUrl(url: String): List<OfflinePageEntity>
 
+    @Query("SELECT * FROM offline_pages")
+    suspend fun all(): List<OfflinePageEntity>
+
     @Insert
     suspend fun insert(page: OfflinePageEntity)
 

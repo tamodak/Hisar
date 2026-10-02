@@ -1,6 +1,7 @@
 package org.tamodak.hisar.ui.browser
 
 import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -10,16 +11,10 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
-import android.view.View
-import android.view.ViewGroup
-import android.webkit.CookieManager
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebStorage
-import android.webkit.WebView
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -32,30 +27,30 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.view.drawToBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.webkit.ScriptHandler
-import androidx.webkit.WebViewCompat
-import androidx.webkit.WebViewFeature
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import org.json.JSONTokener
+import org.mozilla.geckoview.GeckoSession
+import org.mozilla.geckoview.GeckoSession.PromptDelegate.FilePrompt
+import org.mozilla.geckoview.StorageController
+import org.mozilla.geckoview.WebResponse
 import org.tamodak.hisar.MainActivity
 import org.tamodak.hisar.R
 import org.tamodak.hisar.data.model.UserSettings
+import org.tamodak.hisar.data.repository.FaviconRepository
 import org.tamodak.hisar.data.repository.FilterRepository
-import org.tamodak.hisar.data.repository.OfflinePageRepository
-import org.tamodak.hisar.web.LinkTarget
 import org.tamodak.hisar.filter.BlockReason
 import org.tamodak.hisar.filter.Decision
-import org.tamodak.hisar.web.HisarWebViewClient
+import org.tamodak.hisar.web.EngineEvents
+import org.tamodak.hisar.web.GeckoEngine
+import org.tamodak.hisar.web.GuardedGeckoView
+import org.tamodak.hisar.web.LinkTarget
+import org.tamodak.hisar.web.PagePrompt
 import org.tamodak.hisar.web.PageStyles
-import org.tamodak.hisar.web.PageGuardScript
-import org.tamodak.hisar.web.WebViewCallbacks
-import org.tamodak.hisar.web.WebViewFactory
+import org.tamodak.hisar.web.TabCallbacks
+import org.tamodak.hisar.web.TabSession
 
 /** The activity's launchers for what needs another app: the file picker, speech, camera and photos. */
 interface SystemLaunchers {
@@ -67,33 +62,40 @@ interface SystemLaunchers {
 }
 
 /**
- * The browser's UI-layer state holder. It owns the tabs' WebViews — Views, which a ViewModel must
- * never hold — and the state of the browser chrome (address bar focus, toolbar, menus and sheets).
- * It runs the UI logic that needs a View or the window, and hands everything else to
- * [BrowserViewModel], whose state it follows: when a tab's [TabState.pendingLoad] is set, this
- * is what loads it.
+ * The browser's UI-layer state holder. It owns the tabs' pages — engine sessions and the view
+ * they are shown in, which a ViewModel must never hold — and the state of the browser chrome
+ * (address bar focus, toolbar, menus, sheets and the page's own dialogs). It runs the UI logic
+ * that needs a View or the window, and hands everything else to [BrowserViewModel], whose state
+ * it follows: when a tab's [TabState.pendingLoad] is set, this is what loads it.
  *
  * Created by the activity and destroyed with it; the activity keeps itself across configuration
- * changes, so WebViews and their pages survive rotation.
+ * changes, so the pages survive rotation.
  */
 class BrowserController(
     private val activity: ComponentActivity,
     val viewModel: BrowserViewModel,
     private val filters: FilterRepository,
+    private val engine: GeckoEngine,
+    private val favicons: FaviconRepository,
     private val launchers: SystemLaunchers,
-) : WebViewCallbacks {
+) : TabCallbacks, EngineEvents {
 
-    private val factory = WebViewFactory(activity, filters, this, activity.lifecycleScope, Dispatchers.Default)
     /**
-     * The tabs' WebViews. Snapshot state, so the screen attaches a WebView the moment it is
-     * created: a page that starts loading in a detached, 0×0 WebView looks like a bot to Google.
+     * The one view pages are shown in; the current tab's session is attached to it. On-screen
+     * keyboard input is checked here before any page sees it.
      */
-    private val webViews = mutableStateMapOf<Long, WebView>()
-    private val simpleModeScripts = HashMap<Long, ScriptHandler>()
-    /** The in-page guard, built once the word list is loaded. */
-    private var pageGuardScript: String? = null
+    val pageView: GuardedGeckoView = GuardedGeckoView(activity, filters) {
+        viewModel.onNavigationBlocked(BlockReason.BLOCKED_WORDS)
+    }
+
+    /** The tabs' pages, created when a tab first shows one. */
+    private val sessions = mutableStateMapOf<Long, TabSession>()
+    /** The engine's own tab ids, which its background reports use, to ours. */
+    private val engineTabs = HashMap<Int, Long>()
     private var settings = UserSettings()
-    private var currentTabId: Long? = null
+    private var currentTabId by mutableStateOf<Long?>(null)
+    /** The last address each tab reported, to tell a reload from a new page. */
+    private val lastLocation = HashMap<Long, String>()
 
     // --- Browser chrome state ---------------------------------------------------------------------
 
@@ -113,28 +115,27 @@ class BrowserController(
     var imageSearchOpen by mutableStateOf(false)
         private set
     var openGroupId by mutableStateOf<Long?>(null)
-    /** Full-screen video, shown over everything. */
-    var fullscreenView by mutableStateOf<View?>(null)
+    /** A page (a video) is full screen: only the page shows. */
+    var fullscreen by mutableStateOf(false)
         private set
     /** Each tab as it was last seen, for the tab grid. */
     val thumbnails = mutableStateMapOf<Long, Bitmap>()
 
+    /** Dialogs pages opened, oldest first, with the tab that opened each. */
+    private val prompts = mutableStateListOf<Pair<Long, PagePrompt>>()
+    /** The current tab's oldest open dialog, shown over the page. */
+    val prompt: PagePrompt? by derivedStateOf { prompts.firstOrNull { it.first == currentTabId }?.second }
+    private var filePrompt: PagePrompt? = null
+
     private var imageSearchInNewTab = false
     private var voiceSearchInNewTab = false
-    private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
-    private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var scrollRun = 0
     private val density = activity.resources.displayMetrics.density
 
     init {
-        activity.lifecycleScope.launch {
-            val script = PageGuardScript.build(filters.guard())
-            pageGuardScript = script
-            // WebViews created while the list was loading get it now.
-            webViews.values.forEach { factory.installPageGuard(it, script) }
-        }
+        engine.events = this
         // Follow the ViewModel's state while the activity is visible, as the lifecycle guidance
-        // recommends: WebViews are created, loaded and released to match the tabs.
+        // recommends: sessions are created, loaded and released to match the tabs.
         activity.lifecycleScope.launch {
             activity.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.uiState.collect(::sync) }
@@ -143,67 +144,66 @@ class BrowserController(
         }
     }
 
-    fun webView(tabId: Long?): WebView? = tabId?.let(webViews::get)
+    /** The tab's page, if it has one yet. */
+    fun page(tabId: Long?): TabSession? = tabId?.let(sessions::get)
 
     private fun sync(state: BrowserUiState) {
-        // Release the WebViews of closed tabs.
-        (webViews.keys - state.tabs.map { it.id }.toSet()).forEach(::destroyWebView)
+        // Release the pages of closed tabs.
+        (sessions.keys - state.tabs.map { it.id }.toSet()).forEach(::destroySession)
         val current = state.currentTab
         if (current?.id != currentTabId) {
-            webView(currentTabId)?.onPause()
+            page(currentTabId)?.session?.setActive(false)
             currentTabId = current?.id
             findInPageOpen = false
             toolbarVisible = true
             openGroupId = null
         }
-        if (current != null && !current.showNewTabPage) webViewFor(current).onResume()
-        // Load what tabs ask for: the current one always, others once they have a WebView.
+        if (current != null && !current.showNewTabPage) show(sessionFor(current))
+        // Load what tabs ask for: the current one always, others once they have a page.
         for (tab in state.tabs) {
             val url = tab.pendingLoad ?: continue
-            val view = if (tab.id == current?.id && !tab.showNewTabPage) webViewFor(tab) else webViews[tab.id] ?: continue
+            val page = if (tab.id == current?.id && !tab.showNewTabPage) sessionFor(tab) else sessions[tab.id] ?: continue
             viewModel.onPendingLoadConsumed(tab.id)
-            // Opened on purpose: a page this tab blocked for its content gets a fresh look.
-            (view.webViewClient as? HisarWebViewClient)?.forget(url)
-            // Saved pages need content access, for this load only (see HisarWebViewClient.onPageStarted).
-            if (OfflinePageRepository.isOfflineUrl(activity, url)) view.settings.allowContentAccess = true
-            view.loadUrl(url)
+            page.load(url)
         }
     }
 
-    private fun webViewFor(tab: TabState): WebView = webViews.getOrPut(tab.id) {
-        factory.create(tab.id, tab.desktopMode, settings.textZoom).also { view ->
-            pageGuardScript?.let { factory.installPageGuard(view, it) }
-            applySimpleMode(tab.id, view)
+    /** Puts [page] in the view, as the page showing. */
+    private fun show(page: TabSession) {
+        if (pageView.session !== page.session) {
+            pageView.releaseSession()
+            pageView.setSession(page.session)
         }
+        page.session.setActive(true)
     }
 
-    private fun destroyWebView(tabId: Long) {
-        val view = webViews.remove(tabId) ?: return
-        simpleModeScripts.remove(tabId)
+    private fun sessionFor(tab: TabState, open: Boolean = true): TabSession = sessions.getOrPut(tab.id) {
+        TabSession(tab.id, activity, engine, filters, this, tab.desktopMode, open)
+    }
+
+    private fun destroySession(tabId: Long) {
+        val page = sessions.remove(tabId) ?: return
         thumbnails.remove(tabId)
-        (view.parent as? ViewGroup)?.removeView(view)
-        view.stopLoading()
-        view.destroy()
+        lastLocation.remove(tabId)
+        engineTabs.values.removeAll { it == tabId }
+        prompts.filter { it.first == tabId }.forEach { (_, p) -> p.dismiss() }
+        prompts.removeAll { it.first == tabId }
+        if (pageView.session === page.session) pageView.releaseSession()
+        page.close()
     }
 
     private fun applySettings(new: UserSettings) {
         val simpleChanged = new.simpleMode != settings.simpleMode || new.simpleFont != settings.simpleFont
         settings = new
-        webViews.values.forEach { it.settings.textZoom = new.textZoom }
-        if (simpleChanged) webViews.forEach { (id, view) -> applySimpleMode(id, view) }
-    }
-
-    /**
-     * Installs simple mode's stylesheet as a document-start script, so new pages are restyled
-     * before their first paint, and applies it to the page already showing.
-     */
-    private fun applySimpleMode(tabId: Long, view: WebView) {
-        val css = if (settings.simpleMode) PageStyles.simpleModeCss(settings.simpleFont) else null
-        simpleModeScripts.remove(tabId)?.remove()
-        if (css != null && WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            simpleModeScripts[tabId] = WebViewCompat.addDocumentStartJavaScript(view, PageStyles.applyScript(css), setOf("*"))
+        engine.setTextZoom(new.textZoom)
+        if (simpleChanged) {
+            val css = if (new.simpleMode) PageStyles.simpleModeCss(new.simpleFont) else null
+            engine.setSimpleModeCss(css)
+            // Open pages are restyled now; new ones get the style before their first paint.
+            sessions.values.forEach { page ->
+                activity.lifecycleScope.launch { page.command("simpleMode", JSONObject().put("css", css ?: JSONObject.NULL)) }
+            }
         }
-        view.evaluateJavascript(PageStyles.applyScript(css), null)
     }
 
     // --- Tabs and navigation ------------------------------------------------------------------------
@@ -221,20 +221,22 @@ class BrowserController(
     /** Called before showing the tab grid, so the current tab's card shows the page as it is now. */
     fun captureThumbnail() {
         val tab = viewModel.uiState.value.currentTab ?: return
-        val view = webViews[tab.id] ?: return
-        if (tab.showNewTabPage || view.width == 0 || view.height == 0) return
-        runCatching { view.drawToBitmap().let { it.scale(it.width / 3, it.height / 3) } }.getOrNull()?.let { thumbnails[tab.id] = it }
+        if (tab.showNewTabPage || pageView.width == 0 || pageView.height == 0 || pageView.session !== page(tab.id)?.session) return
+        pageView.capturePixels().accept({ bitmap ->
+            bitmap?.let { thumbnails[tab.id] = it.scale(it.width / 3, it.height / 3) }
+        }, { })
     }
 
     /** Returns false when there is nowhere to go back to, so the system can leave the app. */
     fun goBack(): Boolean {
         val state = viewModel.uiState.value
         val tab = state.currentTab ?: return false
-        val view = webViews[tab.id]
-        val steps = view?.let(::stepsBackToAllowedPage)
+        val page = sessions[tab.id]
+        val target = page?.let(::allowedBackIndex)
         when {
+            fullscreen -> exitFullscreen()
             tab.showNewTabPage && tab.newTabPageCoversPage -> viewModel.hideNewTabPage(tab.id)
-            !tab.showNewTabPage && steps != null -> view.goBackOrForward(-steps)
+            !tab.showNewTabPage && target != null -> if (target == page.historyIndex - 1) page.goBack() else page.goToHistoryIndex(target)
             !tab.showNewTabPage && tab.startedOnNewTabPage -> viewModel.showNewTabPage(tab.id)
             // First page of a tab opened from another: close it and return to the opener.
             tab.parentId != null && state.tab(tab.parentId) != null -> {
@@ -247,29 +249,31 @@ class BrowserController(
     }
 
     /**
-     * How many steps back the nearest page Hisar would show is, skipping blocked pages (and
-     * SafeSearch hops, which would only bounce forward again). Null if there is none: going back
-     * must never reload something blocked, nor land on a block page.
+     * The nearest earlier page Hisar would show, skipping blocked pages (and SafeSearch hops,
+     * which would only bounce forward again). Null if there is none: going back must never
+     * reload something blocked.
      */
-    private fun stepsBackToAllowedPage(view: WebView): Int? {
-        val guard = filters.guardOrNull ?: return if (view.canGoBack()) 1 else null
-        val tabMemory = view.webViewClient as? HisarWebViewClient
-        val history = view.copyBackForwardList()
-        for (index in history.currentIndex - 1 downTo 0) {
-            val url = history.getItemAtIndex(index).url
-            val blockedHere = tabMemory?.isContentBlocked(url) == true
-            if (!blockedHere && guard.checkNavigation(url) is Decision.Allow) return history.currentIndex - index
+    private fun allowedBackIndex(page: TabSession): Int? {
+        val guard = filters.guardOrNull
+        if (guard == null || page.history.isEmpty()) return if (page.canGoBack) page.historyIndex - 1 else null
+        for (index in page.historyIndex - 1 downTo 0) {
+            if (guard.checkNavigation(page.history[index]) is Decision.Allow) return index
         }
         return null
     }
 
     fun goForward() {
         val tab = viewModel.uiState.value.currentTab ?: return
-        if (tab.showNewTabPage && tab.hasPage) viewModel.hideNewTabPage(tab.id) else webViews[tab.id]?.goForward()
+        if (tab.showNewTabPage && tab.hasPage) viewModel.hideNewTabPage(tab.id) else sessions[tab.id]?.goForward()
     }
 
-    fun reload() = webView(currentTabId)?.reload()
-    fun stop() = webView(currentTabId)?.stopLoading()
+    fun reload() {
+        val page = page(currentTabId) ?: return
+        page.url?.let { lastLocation[page.tabId] = it }
+        page.reload()
+    }
+
+    fun stop() = page(currentTabId)?.stop()
 
     fun goHome() {
         currentTabId?.let(viewModel::goHome)
@@ -283,10 +287,7 @@ class BrowserController(
     fun setDesktopMode(enabled: Boolean) {
         val id = currentTabId ?: return
         viewModel.setDesktopMode(id, enabled)
-        webViews[id]?.let {
-            WebViewFactory.applyUserAgent(it, enabled)
-            it.reload()
-        }
+        sessions[id]?.setDesktopMode(enabled)
     }
 
     // --- Page tools ----------------------------------------------------------------------------
@@ -294,25 +295,26 @@ class BrowserController(
     /** Chrome's "Simplified view": the article alone, in a clean reading layout. */
     fun showSimplifiedView() {
         val tab = viewModel.uiState.value.currentTab ?: return
-        val view = webViews[tab.id] ?: return
-        view.evaluateJavascript(PageStyles.READER_EXTRACT_JS) { json ->
-            val result = runCatching { JSONObject(JSONTokener(json).nextValue() as String) }.getOrNull()
-            if (result == null || result.optInt("length") == 0) {
+        val page = sessions[tab.id] ?: return
+        activity.lifecycleScope.launch {
+            val article = page.command("reader")
+            if (article == null || article.optInt("length") == 0) {
                 viewModel.showMessage(R.string.reader_unavailable)
-                return@evaluateJavascript
+                return@launch
             }
             val font = if (settings.simpleMode) settings.simpleFont.css else "Georgia, serif"
-            val html = PageStyles.readerHtml(result.optString("title"), tab.host.orEmpty(), result.optString("html"), isDark(), font)
+            val html = PageStyles.readerHtml(article.optString("title"), tab.host.orEmpty(), article.optString("html"), isDark(), font)
             viewModel.setPendingReader(tab.id)
-            view.loadDataWithBaseURL(tab.url, html, "text/html", "utf-8", tab.url)
+            page.session.load(GeckoSession.Loader().data(html, "text/html"))
         }
     }
 
     fun savePageOffline() {
         val tab = viewModel.uiState.value.currentTab?.takeIf { it.onWebPage } ?: return
-        val view = webViews[tab.id] ?: return
-        viewModel.savePageOffline(tab.url, tab.title) { file, done ->
-            view.saveWebArchive(file.path, false) { saved -> done(saved != null) }
+        val page = sessions[tab.id] ?: return
+        activity.lifecycleScope.launch {
+            val html = page.command("save")?.optString("text")?.takeIf { it.isNotEmpty() }
+            viewModel.savePageOffline(tab.url, tab.title, html)
         }
     }
 
@@ -348,18 +350,12 @@ class BrowserController(
     fun clearBrowsingData(history: Boolean, cookies: Boolean, cache: Boolean) {
         if (history) {
             viewModel.clearHistoryData()
-            webViews.values.forEach { it.clearHistory() }
+            sessions.values.forEach { it.session.purgeHistory() }
         }
-        if (cookies) {
-            CookieManager.getInstance().removeAllCookies(null)
-            CookieManager.getInstance().flush()
-            WebStorage.getInstance().deleteAllData()
-        }
-        if (cache) {
-            // The cache is shared by every WebView; any one can clear it.
-            val view = webViews.values.firstOrNull() ?: WebView(activity).also { it.destroy() }
-            view.clearCache(true)
-        }
+        var flags = 0L
+        if (cookies) flags = flags or StorageController.ClearFlags.COOKIES or StorageController.ClearFlags.DOM_STORAGES or StorageController.ClearFlags.AUTH_SESSIONS
+        if (cache) flags = flags or StorageController.ClearFlags.NETWORK_CACHE or StorageController.ClearFlags.IMAGE_CACHE
+        if (flags != 0L) engine.runtime.storageController.clearData(flags)
         viewModel.showMessage(R.string.data_cleared)
     }
 
@@ -408,37 +404,60 @@ class BrowserController(
 
     fun searchImageUrl(imageUrl: String) = viewModel.searchImageUrl(imageUrl, userAgent())
 
-    private fun userAgent() = WebViewFactory.mobileUserAgent(WebSettings.getDefaultUserAgent(activity))
+    private fun userAgent(): String = GeckoSession.getDefaultUserAgent()
 
     private fun isDark(): Boolean = settings.simpleMode ||
         (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
-    // --- WebViewCallbacks ----------------------------------------------------------------------
+    // --- TabCallbacks ----------------------------------------------------------------------------
 
-    override fun onPageStarted(tabId: Long, url: String, favicon: Bitmap?) {
-        viewModel.onPageStarted(tabId, url, favicon)
+    override fun onPageStarted(tabId: Long, url: String) {
+        viewModel.onPageStarted(tabId, url, null)
         if (tabId == currentTabId) toolbarVisible = true
     }
 
-    override fun onPageVisible(tabId: Long, view: WebView) = reapplySimpleMode(view)
-
-    override fun onPageFinished(tabId: Long, view: WebView, url: String) {
-        reapplySimpleMode(view)
+    override fun onPageFinished(tabId: Long) {
         viewModel.onPageFinished(tabId)
+        loadFavicon(tabId)
     }
 
-    /** For WebViews without document-start scripts, simple mode is re-applied as pages load. */
-    private fun reapplySimpleMode(view: WebView) {
-        if (settings.simpleMode) view.evaluateJavascript(PageStyles.applyScript(PageStyles.simpleModeCss(settings.simpleFont)), null)
+    /** The engine doesn't hand over site icons; they are fetched from sites the filters allow. */
+    private fun loadFavicon(tabId: Long) {
+        val url = viewModel.uiState.value.tab(tabId)?.url?.takeIf { it.startsWith("http") } ?: return
+        val host = url.toUri().host ?: return
+        activity.lifecycleScope.launch {
+            val icon = favicons.load(host) ?: if (filters.guard().allows("https://$host/")) favicons.fetch(host) else null
+            icon?.let { viewModel.onIcon(tabId, url, it) }
+        }
     }
 
-    override fun onHistoryUpdated(tabId: Long, view: WebView, url: String, isReload: Boolean) =
-        viewModel.onHistoryUpdated(tabId, url, view.canGoBack(), view.canGoForward(), isReload)
+    /**
+     * Every address a tab shows: a page loaded, or a single-page app moved with pushState, which
+     * sends no request the filters could stop. Such a move to a blocked address is undone.
+     */
+    override fun onLocationChange(tabId: Long, url: String) {
+        val page = sessions[tabId] ?: return
+        val reload = lastLocation.put(tabId, url) == url
+        when (val decision = filters.guardOrNull?.checkNavigation(url)) {
+            is Decision.Block -> {
+                viewModel.onNavigationBlocked(decision.reason)
+                if (page.canGoBack) page.goBack() else viewModel.showNewTabPage(tabId)
+                return
+            }
+            is Decision.Redirect -> {
+                page.load(decision.url)
+                return
+            }
+            else -> Unit
+        }
+        viewModel.onHistoryUpdated(tabId, url, page.canGoBack, page.canGoForward, reload)
+    }
+
+    override fun onHistoryState(tabId: Long, canGoBack: Boolean, canGoForward: Boolean) =
+        viewModel.onHistoryState(tabId, canGoBack, canGoForward)
 
     override fun onProgress(tabId: Long, progress: Int) = viewModel.onProgress(tabId, progress)
     override fun onTitle(tabId: Long, title: String) = viewModel.onTitle(tabId, title)
-    override fun onIcon(tabId: Long, pageUrl: String?, icon: Bitmap) = viewModel.onIcon(tabId, pageUrl, icon)
-    override fun onAdBlocked(tabId: Long) = viewModel.onAdBlocked(tabId)
 
     /** Hides the toolbar after a deliberate scroll down, shows it after a scroll up or at the top. */
     override fun onScroll(tabId: Long, y: Int, oldY: Int) {
@@ -459,11 +478,14 @@ class BrowserController(
         linkMenu = target
     }
 
-    override fun onDownload(tabId: Long, url: String, userAgent: String?, contentDisposition: String?, mimeType: String?) {
+    override fun onDownload(tabId: Long, response: WebResponse) {
+        // DownloadManager fetches the file itself, with the engine's cookies.
+        runCatching { response.body?.close() }
         val tab = viewModel.uiState.value.tab(tabId)
-        download(url, userAgent, contentDisposition, mimeType, referer = tab?.url)
+        fun header(name: String) = response.headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value
+        download(response.uri, null, header("Content-Disposition"), header("Content-Type")?.substringBefore(';')?.trim(), referer = tab?.url)
         // A link that turns out to be a file leaves its tab empty; Chrome closes such a tab.
-        if (tab != null && webViews[tabId]?.copyBackForwardList()?.size == 0) viewModel.closeTab(tabId, undoable = false)
+        if (tab != null && sessions[tabId]?.history?.isEmpty() == true && !tab.hasPage) viewModel.closeTab(tabId, undoable = false)
     }
 
     fun download(url: String, userAgent: String? = null, contentDisposition: String? = null, mimeType: String? = null, referer: String? = null) {
@@ -479,79 +501,115 @@ class BrowserController(
         }
     }
 
-    override fun onCreateWindow(openerTabId: Long): WebView? {
+    override fun onNewWindow(openerTabId: Long, uri: String): GeckoSession? {
         captureThumbnail()
         val id = viewModel.createWindowTab(openerTabId)
         val tab = viewModel.uiState.value.tab(id) ?: return null
-        return webViewFor(tab)
+        // The engine opens the new window's session itself.
+        return sessionFor(tab, open = false).session
     }
 
-    override fun onCloseWindow(view: WebView) {
-        webViews.entries.firstOrNull { it.value === view }?.let { viewModel.closeTab(it.key, undoable = false) }
-    }
+    override fun onCloseWindow(tabId: Long) = viewModel.closeTab(tabId, undoable = false)
 
-    override fun onShowFullscreen(view: View, callback: WebChromeClient.CustomViewCallback) {
-        fullscreenView = view
-        fullscreenCallback = callback
+    override fun onFullscreen(tabId: Long, fullscreen: Boolean) {
+        if (tabId != currentTabId) return
+        this.fullscreen = fullscreen
         WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            if (fullscreen) {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                show(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
-
-    override fun onHideFullscreen() = exitFullscreen()
 
     fun exitFullscreen() {
-        if (fullscreenView == null) return
-        WindowCompat.getInsetsController(activity.window, activity.window.decorView).show(WindowInsetsCompat.Type.systemBars())
-        fullscreenCallback?.onCustomViewHidden()
-        fullscreenCallback = null
-        fullscreenView = null
+        page(currentTabId)?.session?.exitFullScreen()
+        currentTabId?.let { onFullscreen(it, false) }
     }
 
-    override fun onShowFileChooser(callback: ValueCallback<Array<Uri>>, params: WebChromeClient.FileChooserParams): Boolean {
-        fileChooserCallback?.onReceiveValue(null)
-        fileChooserCallback = callback
-        return try {
-            launchers.pickFiles(params.createIntent())
-            true
-        } catch (_: ActivityNotFoundException) {
-            fileChooserCallback = null
-            false
+    override fun onPrompt(tabId: Long, prompt: PagePrompt) {
+        val files = prompt.prompt as? FilePrompt
+        if (files == null) {
+            prompts += tabId to prompt
+            return
         }
+        // Files come from the system picker, not a dialog of ours.
+        filePrompt?.dismiss()
+        filePrompt = prompt
+        if (files.type == FilePrompt.Type.FOLDER) return dismissFilePrompt()
+        val types = files.mimeTypes?.filter { it.isNotBlank() }.orEmpty()
+        val intent = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).apply {
+            type = types.singleOrNull() ?: "*/*"
+            if (types.size > 1) putExtra(Intent.EXTRA_MIME_TYPES, types.toTypedArray())
+            if (files.type == FilePrompt.Type.MULTIPLE) putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        try {
+            launchers.pickFiles(intent)
+        } catch (_: ActivityNotFoundException) {
+            dismissFilePrompt()
+        }
+    }
+
+    /** The page's dialog was answered (or dismissed) and goes away. */
+    fun onPromptDone(prompt: PagePrompt) {
+        prompts.removeAll { it.second === prompt }
     }
 
     fun onFilesPicked(resultCode: Int, data: Intent?) {
-        fileChooserCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
-        fileChooserCallback = null
+        val pending = filePrompt ?: return
+        filePrompt = null
+        val files = pending.prompt as FilePrompt
+        val uris = buildList {
+            data?.clipData?.let { clip -> for (i in 0 until clip.itemCount) add(clip.getItemAt(i).uri) }
+            if (isEmpty()) data?.data?.let(::add)
+        }
+        if (resultCode != Activity.RESULT_OK || uris.isEmpty()) pending.dismiss() else pending.respond(files.confirm(activity, uris.toTypedArray()))
+    }
+
+    private fun dismissFilePrompt() {
+        filePrompt?.dismiss()
+        filePrompt = null
     }
 
     override fun onNavigationBlocked(tabId: Long, reason: BlockReason) = viewModel.onNavigationBlocked(reason)
 
-    override fun onBlockedPageBack(tabId: Long) {
-        if (tabId != currentTabId) return
-        // Nothing allowed behind the block page: the new tab page stands in.
-        if (!goBack()) viewModel.showNewTabPage(tabId)
+    override fun onEngineTab(engineTabId: Int, tabId: Long) {
+        engineTabs[engineTabId] = tabId
     }
 
-    override fun onRendererGone(tabId: Long, view: WebView) {
-        destroyWebView(tabId)
+    override fun onCrash(tabId: Long) {
+        destroySession(tabId)
         viewModel.onRendererGone(tabId)
+    }
+
+    // --- EngineEvents ----------------------------------------------------------------------------
+
+    override fun onRequestBlocked(engineTabId: Int) = viewModel.onNavigationBlocked(BlockReason.BLOCKED_WORDS)
+
+    override fun onAdBlocked(engineTabId: Int) {
+        engineTabs[engineTabId]?.let(viewModel::onAdBlocked)
     }
 
     // --- Lifecycle -----------------------------------------------------------------------------
 
     fun onStop() {
-        webViews.values.firstOrNull()?.pauseTimers()
-        CookieManager.getInstance().flush()
+        page(currentTabId)?.session?.setActive(false)
     }
 
     fun onStart() {
-        webViews.values.firstOrNull()?.resumeTimers()
+        val tab = viewModel.uiState.value.currentTab ?: return
+        if (!tab.showNewTabPage) page(tab.id)?.session?.setActive(true)
     }
 
     fun destroy() {
-        webViews.keys.toList().forEach(::destroyWebView)
+        if (engine.events === this) engine.events = null
+        prompts.forEach { (_, p) -> p.dismiss() }
+        prompts.clear()
+        dismissFilePrompt()
+        pageView.releaseSession()
+        sessions.keys.toList().forEach(::destroySession)
     }
 
     private companion object {

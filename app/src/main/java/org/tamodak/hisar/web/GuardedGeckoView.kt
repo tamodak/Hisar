@@ -6,31 +6,30 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputConnectionWrapper
-import android.webkit.WebView
+import org.mozilla.geckoview.GeckoView
 import org.tamodak.hisar.data.repository.FilterRepository
 
 /**
- * A WebView whose keyboard input is checked before any page sees it.
+ * The view pages are shown in, whose keyboard input is checked before any page sees it.
  *
  * Every on-screen keyboard (Gboard, Samsung, SwiftKey, voice typing) talks to a text field through
- * an [InputConnection]. Chromium hands IME requests to the WebView's [onCreateInputConnection],
- * so wrapping the connection here sees each word as it is committed, and the Go/Search/Enter
- * that submits it, on every site, whatever the page does with the text afterwards (YouTube
- * sends its searches as binary protobuf no request filter can read).
+ * an [InputConnection], which GeckoView hands out from [onCreateInputConnection]. Wrapping it here
+ * sees each word as it is committed, and the Go/Search/Enter that submits it, on every site,
+ * whatever the page does with the text afterwards.
  *
  * Words are judged once finished — committed, or submitted — never letter by letter: "analysis"
  * passes through "anal", Turkish "gayet" through "gay". A finished blocked word is removed from
  * the field before the page receives it; a submit with one is swallowed and the field cleared.
  *
- * The connection is used on Chromium's IME thread, so everything here only reads the (immutable)
+ * The connection may be used off the main thread, so everything here only reads the (immutable)
  * filters and posts results back.
  */
-@SuppressLint("ViewConstructor") // Created only by WebViewFactory, never inflated.
-class GuardedWebView(
+@SuppressLint("ViewConstructor") // Created only by BrowserController, never inflated.
+class GuardedGeckoView(
     context: Context,
     private val filters: FilterRepository,
     private val onBlocked: () -> Unit,
-) : WebView(context) {
+) : GeckoView(context) {
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
         val connection = super.onCreateInputConnection(outAttrs) ?: return null

@@ -27,17 +27,19 @@ import org.tamodak.hisar.ui.browser.SystemLaunchers
 import org.tamodak.hisar.ui.components.FaviconLoader
 import org.tamodak.hisar.ui.navigation.HisarApp
 import org.tamodak.hisar.ui.theme.HisarTheme
+import org.tamodak.hisar.web.GeckoEngine
 import javax.inject.Inject
 
 /**
- * The single activity. The manifest keeps it across configuration changes so the tabs' WebViews,
- * and the pages in them, survive rotation and resizing without reloading.
+ * The single activity. The manifest keeps it across configuration changes so the tabs' pages
+ * survive rotation and resizing without reloading.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity(), SystemLaunchers {
 
     @Inject lateinit var filters: FilterRepository
     @Inject lateinit var favicons: FaviconRepository
+    @Inject lateinit var engine: GeckoEngine
 
     private val viewModel: BrowserViewModel by viewModels()
     private lateinit var controller: BrowserController
@@ -64,7 +66,7 @@ class MainActivity : ComponentActivity(), SystemLaunchers {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        controller = BrowserController(this, viewModel, filters, this)
+        controller = BrowserController(this, viewModel, filters, engine, favicons, this)
         if (savedInstanceState == null) handleIntent(intent)
 
         // Icons are fetched only from sites the filters would let the page itself load.

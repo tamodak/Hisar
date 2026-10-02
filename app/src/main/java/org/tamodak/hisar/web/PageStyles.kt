@@ -1,13 +1,13 @@
 package org.tamodak.hisar.web
 
 import android.text.Html
-import org.json.JSONObject
 import org.tamodak.hisar.data.model.SimpleFont
 
-/** Scripts and HTML Hisar puts into pages: simple mode's restyling and reader mode. */
+/**
+ * What Hisar puts into pages: simple mode's stylesheet (applied by the extension's content script)
+ * and the simplified view's page (its article comes from the content script, content.js).
+ */
 object PageStyles {
-    private const val STYLE_ID = "hisar-simple-mode"
-
     /** One font, one size, white text on black, for every element. Links stay underlined so they can be found. */
     fun simpleModeCss(font: SimpleFont): String = """
         html, body, body * {
@@ -21,63 +21,6 @@ object PageStyles {
         a, a * { text-decoration: underline !important; }
         img, video, svg, canvas, picture { background: transparent !important; }
     """.trimIndent()
-
-    /** Installs (or, with null, removes) the simple-mode stylesheet in the current document. */
-    fun applyScript(css: String?): String {
-        val text = JSONObject.quote(css.orEmpty())
-        return """
-            (function(){
-              var s = document.getElementById('$STYLE_ID');
-              if (${css == null}) { if (s) s.remove(); return; }
-              if (!s) { s = document.createElement('style'); s.id = '$STYLE_ID'; }
-              s.textContent = $text;
-              (document.head || document.documentElement).appendChild(s);
-            })();
-        """.trimIndent()
-    }
-
-    /**
-     * Finds the article in a page: the element whose paragraphs hold the most text. Returns JSON
-     * {title, html, length} with only reading markup kept (headings, paragraphs, lists, quotes,
-     * images, links), or null-ish length 0 when the page is not an article.
-     */
-    const val READER_EXTRACT_JS = """
-(function(){
-  var best = null, bestScore = 0, scores = new Map();
-  document.querySelectorAll('p').forEach(function(p){
-    if (p.closest('nav,aside,footer,header,form,[role=navigation],[aria-hidden=true]')) return;
-    var len = (p.innerText || '').trim().length;
-    if (len < 40) return;
-    var parent = p.parentElement;
-    var s = (scores.get(parent) || 0) + len;
-    scores.set(parent, s);
-    if (s > bestScore) { bestScore = s; best = parent; }
-  });
-  if (!best || bestScore < 600) return JSON.stringify({length: 0});
-  var root = best.closest('article') || best;
-  var keep = {P:1,H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,UL:1,OL:1,LI:1,BLOCKQUOTE:1,PRE:1,FIGURE:1,FIGCAPTION:1,EM:1,STRONG:1,B:1,I:1,A:1,BR:1,IMG:1,CODE:1};
-  var skip = {SCRIPT:1,STYLE:1,NAV:1,ASIDE:1,FOOTER:1,FORM:1,BUTTON:1,IFRAME:1,NOSCRIPT:1,SVG:1};
-  function esc(t){ return t.replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  function walk(n){
-    if (n.nodeType === 3) return esc(n.textContent);
-    if (n.nodeType !== 1 || skip[n.tagName]) return '';
-    var inner = '';
-    n.childNodes.forEach(function(c){ inner += walk(c); });
-    var t = n.tagName;
-    if (t === 'IMG') { var src = n.currentSrc || n.src; return src && src.indexOf('http') === 0 ? '<img src="' + esc(src) + '">' : ''; }
-    if (t === 'A') { return n.href && n.href.indexOf('http') === 0 ? '<a href="' + esc(n.href) + '">' + inner + '</a>' : inner; }
-    if (t === 'BR') return '<br>';
-    if (keep[t]) return '<' + t.toLowerCase() + '>' + inner + '</' + t.toLowerCase() + '>';
-    return inner;
-  }
-  var h1 = document.querySelector('h1');
-  return JSON.stringify({
-    title: (h1 && h1.innerText.trim()) || document.title,
-    html: walk(root),
-    length: bestScore
-  });
-})()
-"""
 
     /** The reader page around extracted article HTML. */
     fun readerHtml(title: String, host: String, articleHtml: String, dark: Boolean, font: String): String {

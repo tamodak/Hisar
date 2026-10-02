@@ -21,6 +21,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // GeckoView is published only to Mozilla's own repository.
+        maven("https://maven.mozilla.org/maven2/") {
+            content { includeGroup("org.mozilla.geckoview") }
+        }
     }
 }
 

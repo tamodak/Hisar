@@ -1,6 +1,5 @@
 package org.tamodak.hisar.ui.browser
 
-import android.webkit.WebView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import org.tamodak.hisar.R
 import org.tamodak.hisar.ui.components.hostOf
 import org.tamodak.hisar.web.LinkTarget
+import org.tamodak.hisar.web.TabSession
 
 /** Long-press menu for a link or image. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -218,29 +218,26 @@ private fun CheckRow(label: Int, checked: Boolean, onChange: (Boolean) -> Unit) 
 
 /** Replaces the toolbar while searching the page, as Chrome's find bar does. */
 @Composable
-fun FindInPageBar(webView: WebView, onClose: () -> Unit) {
+fun FindInPageBar(page: TabSession, onClose: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var active by remember { mutableIntStateOf(0) }
     var total by remember { mutableIntStateOf(0) }
     val focus = remember { FocusRequester() }
+    val onResult = { current: Int, count: Int ->
+        active = current
+        total = count
+    }
 
-    DisposableEffect(webView) {
-        webView.setFindListener { ordinal, count, _ ->
-            active = if (count == 0) 0 else ordinal + 1
-            total = count
-        }
-        onDispose {
-            webView.clearMatches()
-            webView.setFindListener(null)
-        }
+    DisposableEffect(page) {
+        onDispose { page.clearFind() }
     }
     LaunchedEffect(query) {
         if (query.isEmpty()) {
-            webView.clearMatches()
+            page.clearFind()
             active = 0
             total = 0
         } else {
-            webView.findAllAsync(query)
+            page.find(query, onResult = onResult)
         }
     }
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -255,7 +252,7 @@ fun FindInPageBar(webView: WebView, onClose: () -> Unit) {
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { webView.findNext(true) }),
+                keyboardActions = KeyboardActions(onSearch = { page.find(null, onResult = onResult) }),
                 modifier = Modifier.weight(1f).focusRequester(focus),
                 decorationBox = { inner ->
                     if (query.isEmpty()) {
@@ -267,8 +264,8 @@ fun FindInPageBar(webView: WebView, onClose: () -> Unit) {
             if (query.isNotEmpty()) {
                 Text("$active/$total", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 8.dp))
             }
-            IconButton(onClick = { webView.findNext(false) }, enabled = total > 0) { Icon(Icons.Outlined.KeyboardArrowUp, stringResource(R.string.previous_match)) }
-            IconButton(onClick = { webView.findNext(true) }, enabled = total > 0) { Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.next_match)) }
+            IconButton(onClick = { page.find(null, backwards = true, onResult = onResult) }, enabled = total > 0) { Icon(Icons.Outlined.KeyboardArrowUp, stringResource(R.string.previous_match)) }
+            IconButton(onClick = { page.find(null, onResult = onResult) }, enabled = total > 0) { Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.next_match)) }
         }
         HorizontalDivider()
     }

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Refreshes the filter lists embedded in the APK (app/src/main/assets/lists/).
+# Refreshes the filter lists embedded in the APK (app/src/main/assets/extensions/hisar/lists/),
+# where both the app and its built-in browser extension read them.
 #
 # The lists ship inside the app rather than being fetched at runtime: a browser whose filtering
 # depends on a download can be defeated by blocking that download. Run this, review the diff, and
@@ -15,7 +16,7 @@ WORDS_ONLY=false
 [ "${1:-}" = "--words-only" ] && WORDS_ONLY=true
 
 cd "$(dirname "$0")/.."
-OUT=app/src/main/assets/lists
+OUT=app/src/main/assets/extensions/hisar/lists
 mkdir -p "$OUT"
 
 STEVENBLACK=https://raw.githubusercontent.com/StevenBlack/hosts/master

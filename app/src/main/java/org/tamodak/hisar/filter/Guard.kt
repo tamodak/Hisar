@@ -1,13 +1,10 @@
 package org.tamodak.hisar.filter
 
-import java.util.Collections
-
 /** Why something was blocked. */
 enum class BlockReason {
     HARMFUL_SITE,
     AD_OR_TRACKER,
     BLOCKED_WORDS,
-    PAGE_CONTENT,
     UNSAFE_SEARCH_ENGINE,
 }
 
@@ -18,7 +15,9 @@ sealed interface Decision {
 }
 
 /**
- * Every filtering decision Hisar makes, independent of WebView so it can be tested on the JVM.
+ * Every filtering decision Hisar makes, independent of the browser engine so it can be tested on
+ * the JVM. The engine's built-in extension applies the same rules to what pages load
+ * (assets/extensions/hisar/guard.js), checked against the same cases.
  *
  * Nothing here can be turned off: there is no setting, flag or allowlist. That is the product.
  */
@@ -28,21 +27,13 @@ class Guard(
     private val words: WordFilter,
     /**
      * Words with an innocent everyday meaning too ("olgun", "meme"): they stop searches and typed
-     * requests like [words] do, but don't count towards blocking a page by its content.
+     * requests like [words] do, but don't hide anything a page shows.
      */
     private val searchOnlyWords: WordFilter = WordFilter(emptyList()),
 ) {
     /**
-     * Searches whose results were blocked for their content, for the rest of the session and in
-     * every tab: the search itself is what is wrong. Kept by query rather than URL:
-     * Google adds parameters (`sei`, `ei`, …) to every results address, so the same search comes
-     * back under a different URL.
-     */
-    private val blockedQueries: MutableSet<String> = Collections.synchronizedSet(HashSet())
-
-    /**
-     * The lists for the in-page guard (web/PageGuardScript): everything blocks what is typed and
-     * submitted; only [words] hides text on pages, as search-only words have innocent uses.
+     * The lists for the browser extension (web/GuardLists): everything blocks what is typed and
+     * submitted; only [words] hides what pages show, as search-only words have innocent uses.
      */
     val searchPhrases: List<List<String>> get() = words.phraseList + searchOnlyWords.phraseList
     val searchSymbols: List<String> get() = words.symbolList + searchOnlyWords.symbolList
@@ -67,9 +58,6 @@ class Guard(
         // not get a blocked page through.
         translateTarget(parsed)?.let { target ->
             (checkNavigation(target) as? Decision.Block)?.let { return it }
-        }
-        SafeSearch.searchQuery(url)?.let { query ->
-            if (query in blockedQueries) return Decision.Block(BlockReason.PAGE_CONTENT, parsed.host)
         }
         if (SafeSearch.isUnenforceable(url)) return Decision.Block(BlockReason.UNSAFE_SEARCH_ENGINE, parsed.host)
 
@@ -108,22 +96,6 @@ class Guard(
         return Decision.Allow
     }
 
-    /**
-     * The rendered text of a page. Other pages blocked this way are remembered by the tab that
-     * showed them (HisarWebViewClient), not here: a site's address can show different content
-     * later — a single-page app's home showing results — and must not stay blocked everywhere.
-     *
-     * A single hit is not enough — news, medicine and literature
-     * mention these words legitimately — so a page is blocked only once matches pile up.
-     */
-    fun checkPageText(url: String, text: String): Decision {
-        val matches = words.findMatches(text)
-        val distinct = matches.toSet()
-        if (matches.size < PAGE_TOTAL_THRESHOLD && distinct.size < PAGE_DISTINCT_THRESHOLD) return Decision.Allow
-        SafeSearch.searchQuery(url)?.let(blockedQueries::add)
-        return Decision.Block(BlockReason.PAGE_CONTENT, distinct.take(3).joinToString(", "))
-    }
-
     /** True if [text] contains no blocked words. For text Hisar itself shows, like suggestions. */
     fun isClean(text: String): Boolean = searchMatch(text) == null
 
@@ -152,7 +124,6 @@ class Guard(
         return if (isTranslate) parsed.param("u")?.takeIf { it.startsWith("http") } else null
     }
 
-
     companion object {
         /**
          * The original host behind a Google Translate proxy host, or null. Translate encodes
@@ -172,8 +143,5 @@ class Guard(
             "\"(?:q|query|rawQuery|searchQuery|search_query|search|term|searchTerm|keyword|keywords|text)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
             RegexOption.IGNORE_CASE,
         )
-
-        const val PAGE_TOTAL_THRESHOLD = 6
-        const val PAGE_DISTINCT_THRESHOLD = 3
     }
 }

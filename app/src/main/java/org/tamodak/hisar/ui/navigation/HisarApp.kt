@@ -5,10 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Color
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
@@ -30,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +38,7 @@ import androidx.navigation3.ui.NavDisplay
 import kotlinx.serialization.Serializable
 import org.tamodak.hisar.ui.bookmarks.BookmarksRoute
 import org.tamodak.hisar.ui.browser.BrowserController
+import org.tamodak.hisar.ui.browser.PromptDialog
 import org.tamodak.hisar.ui.browser.BrowserScreen
 import org.tamodak.hisar.ui.browser.ClearDataDialog
 import org.tamodak.hisar.ui.browser.ImageSearchSheet
@@ -193,19 +189,9 @@ fun HisarApp(controller: BrowserController, faviconLoader: FaviconLoader) {
                     onDismiss = { controller.openGroupId = null },
                 )
             }
-            controller.fullscreenView?.let { view ->
-                BackHandler { controller.exitFullscreen() }
-                AndroidView(
-                    factory = { FrameLayout(it).apply { setBackgroundColor(Color.BLACK) } },
-                    update = { container ->
-                        if (container.getChildAt(0) !== view) {
-                            container.removeAllViews()
-                            (view.parent as? ViewGroup)?.removeView(view)
-                            container.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
+            // A page's own dialog (alert, confirm, a <select>'s options, a date) over the page.
+            controller.prompt?.let { prompt ->
+                PromptDialog(prompt, onDone = { controller.onPromptDone(prompt) })
             }
         }
     }

@@ -135,13 +135,6 @@
     <string name="cancel_download">Cancel</string>
 
     <!-- Blocked page -->
-    <string name="blocked_title">This page is blocked</string>
-    <string name="blocked_harmful">Hisar blocked this site because it is on the list of harmful sites.</string>
-    <string name="blocked_ads">Hisar blocked this site because it serves ads, trackers or malware.</string>
-    <string name="blocked_words">Hisar blocked this address because it contains blocked words.</string>
-    <string name="blocked_content">Hisar blocked this page because its content contains blocked words.</string>
-    <string name="blocked_search_engine">Hisar blocked this search engine because it cannot enforce SafeSearch on it.</string>
-    <string name="go_back">Go back</string>
 
     <!-- Chrome features -->
     <string name="opened_in_group">Opened in new tab in group</string>
@@ -194,7 +187,24 @@
     <string name="shortcut_url">URL</string>
     <string name="shortcut_url_invalid">Enter a web address</string>
     <string name="save">Save</string>
+    <string name="page_error_title">This site can’t be reached</string>
+    <string name="page_error_offline">You’re offline. Check your connection and try again.</string>
+    <string name="page_error_host">The site’s address couldn’t be found.</string>
+    <string name="page_error_security">The connection to this site isn’t secure, so Hisar didn’t open it.</string>
+    <string name="page_error_safebrowsing">Google Safe Browsing reports this site as dangerous, so Hisar didn’t open it.</string>
+    <string name="page_error_other">The site didn’t respond. Try again later.</string>
     <string name="search_blocked">Hisar didn\'t send this: it contains blocked words</string>
     <string name="site_blocked">Hisar blocked this site</string>
     <string name="search_engine_blocked">Hisar can\'t enforce SafeSearch on this search engine</string>
+    <string name="ok">OK</string>
+    <string name="prompt_leave_title">Leave this page?</string>
+    <string name="prompt_leave_message">Changes you made may not be saved.</string>
+    <string name="prompt_leave">Leave</string>
+    <string name="prompt_stay">Stay</string>
+    <string name="prompt_repost_title">Send the form again?</string>
+    <string name="prompt_repost_message">This page sends information you entered again. Anything it did, like a purchase, may be repeated.</string>
+    <string name="prompt_resend">Send again</string>
+    <string name="prompt_sign_in">Sign in</string>
+    <string name="prompt_username">Username</string>
+    <string name="prompt_password">Password</string>
 </resources>

@@ -1,7 +1,6 @@
 package org.tamodak.hisar.ui.browser
 
 import android.view.ViewGroup
-import android.webkit.WebView
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -75,7 +74,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -139,22 +137,26 @@ fun BrowserScreen(
     BackHandler(enabled = controller.findInPageOpen) { controller.findInPageOpen = false }
     BackHandler(enabled = controller.omniboxFocused) { focusManager.clearFocus() }
 
-    val showToolbar = controller.toolbarVisible || controller.omniboxFocused || controller.findInPageOpen || tab?.showNewTabPage == true
+    // A full-screen page (a video) shows alone; Back leaves full screen first.
+    val fullscreen = controller.fullscreen
+    BackHandler(enabled = fullscreen) { controller.exitFullscreen() }
+    val showToolbar = !fullscreen &&
+        (controller.toolbarVisible || controller.omniboxFocused || controller.findInPageOpen || tab?.showNewTabPage == true)
     val group = tab?.let(state::groupOf)
 
     // A Surface rather than a plain background, so icons and text take the theme's content colour.
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
             // The status bar strip stays when the toolbar slides away, so the page never runs under it.
-            Spacer(Modifier.statusBarsPadding())
+            if (!fullscreen) Spacer(Modifier.statusBarsPadding())
             AnimatedVisibility(
                 visible = showToolbar,
                 enter = expandVertically(expandFrom = Alignment.Top),
                 exit = shrinkVertically(shrinkTowards = Alignment.Top),
             ) {
-                val webView = controller.webView(tab?.id)
-                if (controller.findInPageOpen && webView != null && tab?.showNewTabPage == false) {
-                    FindInPageBar(webView, onClose = { controller.findInPageOpen = false })
+                val page = controller.page(tab?.id)
+                if (controller.findInPageOpen && page != null && tab?.showNewTabPage == false) {
+                    FindInPageBar(page, onClose = { controller.findInPageOpen = false })
                 } else {
                     Toolbar(
                         controller = controller,
@@ -209,7 +211,7 @@ fun BrowserScreen(
                 }
             }
             // Chrome's bottom strip for a tab in a group: the group's tabs, and a button for another.
-            if (group != null && tab != null && showToolbar && !controller.omniboxFocused) {
+            if (group != null && tab != null && showToolbar && !controller.omniboxFocused && !fullscreen) {
                 GroupStrip(
                     group = group,
                     tabs = state.tabsIn(group),
@@ -238,18 +240,16 @@ fun BrowserScreen(
 }
 
 /**
- * Hosts the tab's WebView, moving it here from wherever it was last attached, inside a
- * pull-to-refresh layout.
+ * Hosts the page view, moving it here from wherever it was last attached, inside a
+ * pull-to-refresh layout. The controller has put the tab's session in it.
  */
 @Composable
 private fun WebContent(controller: BrowserController, tab: TabState) {
-    val webView = controller.webView(tab.id) ?: return
+    val pageView = controller.pageView
     val spinner = MaterialTheme.colorScheme.primary.toArgb()
     val spinnerBackground = MaterialTheme.colorScheme.surfaceContainerHigh.toArgb()
     val loading = tab.loading
-    // One host per WebView instance: a WebView replaced after its renderer died (or a tab switch)
-    // gets a fresh host rather than relying on the old one noticing the swap.
-    key(webView) {
+    val tabId = tab.id
     AndroidView(
         factory = { context ->
             SwipeRefreshLayout(context).apply {
@@ -258,24 +258,19 @@ private fun WebContent(controller: BrowserController, tab: TabState) {
             }
         },
         update = { layout ->
-            if (layout.getChildAt(layout.childCount - 1) !== webView) {
-                // SwipeRefreshLayout keeps its spinner as a child too; only the WebView is swapped.
-                (webView.parent as? ViewGroup)?.removeView(webView)
-                for (i in layout.childCount - 1 downTo 0) {
-                    if (layout.getChildAt(i) is WebView) layout.removeViewAt(i)
-                }
-                layout.addView(webView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            if (pageView.parent !== layout) {
+                (pageView.parent as? ViewGroup)?.removeView(pageView)
+                layout.addView(pageView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             }
-            layout.setOnRefreshListener { webView.reload() }
+            layout.setOnRefreshListener { controller.reload() }
             // Pull only when the page itself is at the top, not when it merely has room to scroll.
-            layout.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
+            layout.setOnChildScrollUpCallback { _, _ -> controller.page(tabId)?.isScrolled == true }
             if (!loading) layout.isRefreshing = false
         },
-        // The WebView belongs to the controller and outlives this view; detach it, never destroy it here.
-        onRelease = { layout -> layout.removeView(webView) },
+        // The view belongs to the controller and outlives this host; detach it, never destroy it here.
+        onRelease = { layout -> layout.removeView(pageView) },
         modifier = Modifier.fillMaxSize(),
     )
-    }
 }
 
 @Composable

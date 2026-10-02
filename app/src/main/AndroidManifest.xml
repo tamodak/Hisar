@@ -25,14 +25,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Hisar">
 
-        <!-- Google Safe Browsing for every WebView: malware and phishing pages the lists miss. -->
-        <meta-data
-            android:name="android.webkit.WebView.EnableSafeBrowsing"
-            android:value="true" />
-
         <!--
-            configChanges keeps the activity, and with it the tabs' WebViews and their pages,
-            alive across rotation, resizing and keyboard changes; Compose re-lays itself out.
+            configChanges keeps the activity, and with it the tabs' pages, alive across rotation,
+            resizing and keyboard changes; Compose re-lays itself out.
         -->
         <activity
             android:name=".MainActivity"
@@ -57,12 +52,12 @@
         </activity>
 
         <!--
-            Serves saved pages (MHTML) to WebView; covers only the saved-pages folder. Not
+            Serves saved pages to the browser engine; covers only the saved-pages folder. Not
             exported, and Hisar never grants its URIs to other apps (FileProvider requires the
             grant attribute to be true regardless).
         -->
         <provider
-            android:name=".data.repository.OfflinePageProvider"
+            android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.offline"
             android:exported="false"
             android:grantUriPermissions="true">

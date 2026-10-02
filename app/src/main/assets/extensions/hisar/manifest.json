@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "Hisar filter",
+  "version": "1.0",
+  "description": "Hisar's request, response and page filtering, built into the browser.",
+  "browser_specific_settings": {
+    "gecko": { "id": "filter@hisar.tamodak.org" }
+  },
+  "background": {
+    "scripts": ["matcher.js", "guard.js", "html-filter.js", "background.js"],
+    "persistent": true
+  },
+  "permissions": [
+    "<all_urls>",
+    "webRequest",
+    "webRequestBlocking",
+    "cookies",
+    "tabs",
+    "nativeMessaging",
+    "nativeMessagingFromContent",
+    "geckoViewAddons"
+  ]
+}
