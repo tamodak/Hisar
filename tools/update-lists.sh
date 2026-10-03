@@ -69,9 +69,22 @@ echo "Blocked words (LDNOOBW en + tr) and local additions…"
     echo
     # Hisar's own additions, one per line; lines starting with # are comments.
     grep -vE '^[[:space:]]*(#|$)' tools/extra-words.txt || true
+    # Lists by language and topic (tools/words/README.md).
+    cat tools/words/*.txt
     # Combinations of ambiguous words ("trans man", "drag queen"), with Turkish endings.
     python3 tools/expand_combinations.py tools/combinations.txt
-} | normalize_words | drop_exceptions > "$OUT/words.txt"
+} | normalize_words | drop_exceptions > "$OUT/words.all"
+# Turkish is often typed without its letters: add the ASCII spellings that aren't everyday words.
+python3 tools/check_collisions.py fold "$OUT/words.all" --skip $(ls tools/words/*.txt | grep -v '/tr.txt$') > "$OUT/words.folded"
+cat "$OUT/words.folded" >> "$OUT/words.all"
+# Matching is by whole word: add plurals ("thirst traps" for "thirst trap").
+python3 tools/inflect.py "$OUT/words.all" > "$OUT/words.plural"
+cat "$OUT/words.plural" >> "$OUT/words.all"
+rm "$OUT/words.folded" "$OUT/words.plural"
+# Search-only words have innocent everyday senses: they stop searches but stay off pages, even
+# when a source list has them (LDNOOBW's "escort", "butt").
+normalize_words < "$OUT/words.all" | grep -vxF -f <(normalize_words < tools/search-only-words.txt) > "$OUT/words.txt"
+rm "$OUT/words.all"
 
 echo "Search-only words (blocked in searches, not counted on pages)…"
 normalize_words < tools/search-only-words.txt | drop_exceptions > "$OUT/search_words.txt"

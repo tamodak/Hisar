@@ -36,6 +36,8 @@ TURKISH_SUFFIXES = sorted(
     reverse=True,
 )
 ENGLISH_INFLECTIONS = ["s", "es", "ed", "ing", "er", "ers", "ly", "y"]
+FREQUENCY_LANGUAGES = ["en", "tr", "es", "pt", "de", "fr", "it", "ru", "ar", "id", "nl", "pl"]
+FREQUENCY_CACHE = os.path.expanduser("~/.cache/hisar-frequency")
 DICTIONARIES = ["/usr/share/dict/american-english", "/usr/share/dict/british-english", "/usr/share/dict/words"]
 
 
@@ -56,6 +58,14 @@ def main(lists_dir):
         if os.path.exists(path):
             with open(path, encoding="utf-8", errors="ignore") as f:
                 dictionary |= {w.strip().lower() for w in f if w.strip().isalpha()}
+    # Everyday words of twelve languages (tools/check_collisions.py downloads them): blocked words
+    # from those languages must not hide innocent ones either (German "erotisch" is inside
+    # "neurotisch").
+    for language in FREQUENCY_LANGUAGES:
+        path = os.path.join(FREQUENCY_CACHE, language + ".txt")
+        if os.path.exists(path):
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                dictionary |= {line.split(" ")[0].strip().lower() for line in f if line.split(" ")[0].strip().isalpha()}
     if not dictionary:
         sys.exit("No system dictionary found; install wamerican to derive the word rules safely.")
 
@@ -68,11 +78,30 @@ def main(lists_dir):
         """A dictionary word containing [word] that isn't just it, inflected or blocked itself."""
         return other != word and not inflection_of(word, other) and other not in blocked
 
+    # The dictionary as one string, one word per line: str.find scans it in C, far faster than
+    # testing each of its 600 000 words in turn.
+    joined = "\n" + "\n".join(sorted(dictionary)) + "\n"
+
+    def containing(word):
+        """The dictionary words that contain [word]."""
+        found = []
+        at = joined.find(word)
+        while at >= 0:
+            start = joined.rfind("\n", 0, at) + 1
+            end = joined.find("\n", at)
+            found.append(joined[start:end])
+            at = joined.find(word, end)
+        return found
+
     substring = []
     for word in single:
         if len(word) < 6:
             continue
-        collisions = [d for d in dictionary if word in d and innocent(word, d)]
+        # A letter stuck to an everyday word ("tgirl" = t + girl) turns up inside harmless names
+        # ("@manifestgirls"): such words get no substring rule.
+        if word[1:] in dictionary or word[:-1] in dictionary:
+            continue
+        collisions = [d for d in containing(word) if innocent(word, d)]
         if not collisions:
             substring.append(word)
 
@@ -86,7 +115,7 @@ def main(lists_dir):
     if "--report" in sys.argv:
         for word in single:
             if len(word) >= 6 and word not in substring:
-                print("no substring rule:", word, sorted(d for d in dictionary if word in d and innocent(word, d))[:5])
+                print("no substring rule:", word, sorted(d for d in containing(word) if innocent(word, d))[:5])
     for name, items in (("substring_words.txt", substring), ("suffix_stems.txt", stems)):
         with open(os.path.join(lists_dir, name), "w", encoding="utf-8") as f:
             f.write("\n".join(items) + "\n")

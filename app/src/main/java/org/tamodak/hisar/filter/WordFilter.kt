@@ -12,7 +12,12 @@ import java.text.Normalizer
  * Turkish "göt" into the English "got" and flag every page that uses it.
  *
  * Entries that contain no letters or digits at all (emoji) cannot be tokenised and are matched as
- * plain substrings instead.
+ * plain substrings instead, and so are entries in scripts written without spaces (Chinese,
+ * Japanese, Korean), whose words run together in text.
+ *
+ * Text is read twice when it looks disguised ([Readings]): as written, and with leetspeak
+ * ("p0rn"), spaced letters ("p o r n"), stretched letters ("sexxxy"), look-alike letters from
+ * other alphabets, small capitals and invisible characters undone.
  *
  * Two looser rules apply to the words a dictionary check (tools/derive_word_rules.py) found safe:
  * - [substringWords]: matched inside other words, for names sites glue together
@@ -33,6 +38,8 @@ class WordFilter(
     /** Phrases keyed by their first word; a single word is a one-word phrase. */
     private val phrases: Map<String, List<List<String>>>
     private val symbols: List<String>
+    /** Entries in scripts without spaces, matched as substrings of the normalised text. */
+    private val unspaced: List<String>
 
     /** Number of entries, for display. */
     val size: Int = entries.size
@@ -40,17 +47,25 @@ class WordFilter(
     init {
         val byFirst = HashMap<String, MutableList<List<String>>>()
         val symbolEntries = ArrayList<String>()
+        val unspacedEntries = ArrayList<String>()
         for (entry in entries) {
             val words = tokenize(entry)
-            if (words.isEmpty()) {
-                entry.trim().takeIf { it.isNotEmpty() }?.let(symbolEntries::add)
+            if (Readings.isUnspaced(entry)) {
+                normalize(entry).trim().takeIf { it.codePointCount(0, it.length) >= 2 }?.let(unspacedEntries::add)
+            } else if (words.isNotEmpty() && words.all { w -> w.all(Char::isDigit) }) {
+                // Numbers alone ("18" of "18+") would match every date and count.
+                continue
+            } else if (words.isEmpty()) {
+                symbolForm(entry.trim()).takeIf { it.isNotEmpty() }?.let(symbolEntries::add)
             } else {
                 byFirst.getOrPut(words.first()) { ArrayList() }.add(words)
             }
         }
         phrases = byFirst
         symbols = symbolEntries
+        unspaced = unspacedEntries
     }
+
 
     private val allowed: Map<String, List<List<String>>> =
         allowedPhrases.map(::tokenize).filter { it.isNotEmpty() }.groupBy { it.first() }
@@ -75,12 +90,24 @@ class WordFilter(
      * as its words, and the entries matched as plain substrings.
      */
     val phraseList: List<List<String>> get() = phrases.values.flatten()
-    val symbolList: List<String> get() = symbols
+    val symbolList: List<String> get() = symbols + unspaced
 
     /** Every blocked entry found in [text], once per occurrence, joined back with spaces. */
     fun findMatches(text: String): List<String> {
         val found = ArrayList<String>()
-        val words = tokenize(text)
+        for (words in Readings.of(text)) matchWords(words, found)
+        if (symbols.isNotEmpty()) {
+            val symbolText = symbolForm(text)
+            for (symbol in symbols) if (symbolText.contains(symbol)) found += symbol
+        }
+        if (unspaced.isNotEmpty()) {
+            val normalized = normalize(text)
+            for (entry in unspaced) if (normalized.contains(entry)) found += entry
+        }
+        return found
+    }
+
+    private fun matchWords(words: List<String>, found: MutableList<String>) {
         var skipUntil = 0
         for (i in words.indices) {
             val word = words[i]
@@ -95,10 +122,6 @@ class WordFilter(
             }
             if (found.size == before) looseMatch(word)?.let(found::add)
         }
-        for (symbol in symbols) {
-            if (text.contains(symbol)) found += symbol
-        }
-        return found
     }
 
     /** A blocked word with a Turkish ending, or embedded in a longer name. */
@@ -135,6 +158,11 @@ class WordFilter(
                 lines.map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith('#') }.toList()
             }
         )
+
+        private val SYMBOL_NOISE = Regex("[\\x{1F3FB}-\\x{1F3FF}\\uFE0F]")
+
+        /** Emoji as compared: without skin tones and variation selectors (👉🏻👌 is 👉👌). */
+        internal fun symbolForm(text: String): String = SYMBOL_NOISE.replace(text, "")
 
         internal fun normalize(text: String): String =
             // Lower-casing "İ" leaves "i" plus a combining dot; fold that back to a plain "i".

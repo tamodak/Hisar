@@ -16,9 +16,13 @@ def fetch(query, out):
     m = re.search(r"var ytInitialData = '(.*?)';", html, re.S)
     if not m:
         return False
-    # The data is a JS string literal with \xHH escapes.
-    text = re.sub(r"\\x([0-9a-fA-F]{2})", lambda x: chr(int(x.group(1), 16)), m.group(1))
-    json.dump(json.loads(text.replace("\\'", "'")), open(path, "w"))
+    # The data is a JS string literal: \xHH escapes become JSON's \u00HH, and \' a plain quote.
+    literal = re.sub(r"\\x([0-9a-fA-F]{2})", r"\\u00\1", m.group(1).replace("\\'", "'"))
+    try:
+        data = json.loads(json.loads('"' + literal + '"'))
+    except ValueError:
+        return False
+    json.dump(data, open(path, "w"))
     return True
 
 

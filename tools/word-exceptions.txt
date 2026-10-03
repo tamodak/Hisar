@@ -6,3 +6,8 @@
 am
 s&m
 xx
+# Not sexual, and everyday words elsewhere: Spanish/Portuguese/Italian "negro" (black), the Turkish
+# word for Roma people, an Indonesian word.
+negro
+çingene
+mong

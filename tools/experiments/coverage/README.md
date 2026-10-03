@@ -12,5 +12,11 @@ and prints, per search, how many results it removes and the ones it keeps (relev
 removes (innocent searches). Read those by hand: the kept list shows missing words, the removed
 list shows words that need an allowed phrase (tools/allowed-phrases.txt) or a narrower form.
 
-2026-10-03: relevant videos 418 of 464 removed (the rest mostly innocent: Kendrick Lamar's "PRIDE",
+2026-10-03, first lists: relevant videos 418 of 464 removed.
 SCP "MTF", FTM trading, trains); innocent 0 of 444 removed.
+
+2026-10-04, after the multilingual lists (45 relevant searches in 9 languages, 48 innocent ones
+chosen to probe collisions: Moby Dick, Ford Escort, Queen, çıplak ayak, kaşar peyniri, news in 8
+languages): relevant 581 of 728 removed, innocent 0 of 864 removed. Most of what is kept is
+suggestive rather than explicit (dance videos, film kiss scenes, swimwear listings), where the
+words are innocent and only the picture tells.

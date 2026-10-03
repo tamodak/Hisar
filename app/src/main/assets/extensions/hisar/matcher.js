@@ -12,10 +12,118 @@ var HisarMatcher = (function () {
   /** Words remembered per matcher. */
   var MEMO_LIMIT = 50000;
 
+  /** [text] in normalised form, as WordFilter.normalize makes it. */
+  function normalize(text) {
+    return String(text).toLowerCase().normalize('NFKC').replace(/i̇/g, 'i');
+  }
+
   /** The words of [text] in normalised form, as WordFilter.tokenize makes them. */
   function tokens(text) {
-    return String(text).toLowerCase().normalize('NFKC').replace(/i̇/g, 'i')
-      .split(/[^\p{L}\p{N}]+/u).filter(function (x) { return x.length > 0; });
+    return normalize(text).split(/[^\p{L}\p{N}]+/u).filter(function (x) { return x.length > 0; });
+  }
+
+  // --- Readings: the text as written, and with disguises undone (Readings.kt, kept in step) -----
+
+  var INVISIBLE = /[\u00AD\u200B-\u200F\u2060-\u2064\uFEFF]/g;
+  var WORD_RUN = /[\p{L}\p{N}@$!|€+]+/gu;
+  var TRIPLE = /(\p{L})\1{2,}/gu;
+  var UNSPACED = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+  var LEET = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '8': 'b', '@': 'a', '$': 's', '!': 'i', '|': 'l', '€': 'e', '+': 't' };
+  var LOOKALIKE = {
+    'а': 'a', 'в': 'b', 'е': 'e', 'ё': 'e', 'к': 'k', 'м': 'm', 'н': 'h', 'о': 'o', 'р': 'p', 'с': 'c', 'т': 't', 'у': 'y', 'х': 'x',
+    'і': 'i', 'ј': 'j', 'ѕ': 's', 'ԁ': 'd', 'ԛ': 'q', 'ԝ': 'w',
+    'α': 'a', 'β': 'b', 'ε': 'e', 'ι': 'i', 'κ': 'k', 'ν': 'v', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'u', 'χ': 'x', 'γ': 'y',
+  };
+  var SMALL_CAPS = {};
+  // Small capitals and their letters (there are none for x).
+  'ᴀa ʙb ᴄc ᴅd ᴇe ꜰf ɢg ʜh ɪi ᴊj ᴋk ʟl ᴍm ɴn ᴏo ᴘp ꞯq ʀr ꜱs ᴛt ᴜu ᴠv ᴡw ʏy ᴢz'.split(' ').forEach(function (pair) { var c = Array.from(pair); SMALL_CAPS[c[0]] = c[1]; });
+  function isLetter(c) { return /\p{L}/u.test(c); }
+  function words(text) { return text.split(/[^\p{L}\p{N}]+/u).filter(function (x) { return x.length > 0; }); }
+
+  function hasLetterRun(text) {
+    var run = 0, w = words(text);
+    for (var i = 0; i < w.length; i++) {
+      run = w[i].length === 1 && isLetter(w[i]) ? run + 1 : 0;
+      if (run >= 3) return true;
+    }
+    return false;
+  }
+
+  var SMALL_CAP_RE = /[ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘꞯʀꜱᴛᴜᴠᴡʏᴢ]/g;
+  var LOOKALIKE_RE = /[авеёкмнорстухіјѕԁԛԝαβεικνορτυχγ]/;
+  var SIGN_RE = /[0134578@$!|€+]/;
+  var LETTERS_RE = /\p{L}/gu;
+  var SIGNS_RE = /[0134578@$!|€+]/g;
+
+  /** The text with disguises undone, or null when it shows none (the common case, kept cheap). */
+  function undisguise(text) {
+    var t = text.replace(INVISIBLE, '');
+    var changed = t.length !== text.length;
+    var capped = t.replace(SMALL_CAP_RE, function (c) { return SMALL_CAPS[c]; });
+    if (capped !== t) { t = capped; changed = true; }
+    var regional = t.replace(/[\u{1F1E6}-\u{1F1FF}]/gu, function (c) { return String.fromCharCode(97 + c.codePointAt(0) - 0x1F1E6); });
+    if (regional !== t) { t = regional; changed = true; }
+    t = t.replace(WORD_RUN, function (word) {
+      var mixed = LOOKALIKE_RE.test(word) && /[a-z]/.test(word);
+      // Plain words, the vast majority, have nothing to undo.
+      if (!mixed && !SIGN_RE.test(word)) return word;
+      var result = word;
+      if (mixed) result = result.replace(/./gu, function (c) { return LOOKALIKE[c] !== undefined ? LOOKALIKE[c] : c; });
+      var letters = (result.match(LETTERS_RE) || []).length;
+      var signs = (result.match(SIGNS_RE) || []).length;
+      if (signs > 0 && letters >= 2 && signs <= letters) {
+        result = result.replace(SIGNS_RE, function (c) { return LEET[c]; });
+      }
+      if (result !== word) changed = true;
+      return result;
+    });
+    TRIPLE.lastIndex = 0;
+    if (!changed && !TRIPLE.test(t) && !hasLetterRun(t)) return null;
+    return t;
+  }
+
+  /** Runs of three or more single letters joined into one word. */
+  function join(w) {
+    var out = [];
+    for (var i = 0; i < w.length;) {
+      var j = i;
+      while (j < w.length && w[j].length === 1 && isLetter(w[j])) j++;
+      if (j - i >= 3) { out.push(w.slice(i, j).join('')); i = j; } else { out.push(w[i]); i++; }
+    }
+    return out;
+  }
+
+  /** Emoji as compared: without skin tones and variation selectors (👉🏻👌 is 👉👌). */
+  var SYMBOL_NOISE = /[\u{1F3FB}-\u{1F3FF}\uFE0F]/gu;
+  function symbolForm(text) { return String(text).replace(SYMBOL_NOISE, ''); }
+
+  function same(a, b) {
+    if (a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  /**
+   * Whether [text] could hold a disguise at all: an invisible character, a small capital, a
+   * regional-indicator letter, a Cyrillic or Greek letter, a digit or sign next to a letter, a
+   * letter three times over or a single letter standing alone. Ordinary text has none, and skips
+   * the second reading (a shortcut only: undisguise() would find nothing to undo).
+   */
+  var MAYBE_DISGUISED = /[\u00AD\u200B-\u200F\u2060-\u2064\uFEFF\u{1F1E6}-\u{1F1FF}ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘꞯʀꜱᴛᴜᴠᴡʏᴢ\u0370-\u03FF\u0400-\u052F]|\p{L}[\p{N}@$!|€+]|[\p{N}@$!|€+]\p{L}|(\p{L})\1\1|(?:^|[^\p{L}\p{N}])\p{L}(?:[^\p{L}\p{N}]|$)/u;
+
+  /** The word lists to match: as written, then the undisguised readings that differ. */
+  function readings(text) {
+    var plain = tokens(text);
+    if (!MAYBE_DISGUISED.test(text)) return [plain];
+    var undisguised = undisguise(normalize(text));
+    if (undisguised === null) return [plain];
+    var once = join(words(undisguised));
+    var list = [plain];
+    var first = once.map(function (w) { return w.replace(TRIPLE, '$1'); });
+    if (!same(first, plain)) list.push(first);
+    var second = once.map(function (w) { return w.replace(TRIPLE, '$1$1'); });
+    if (!same(second, plain) && !same(second, first)) list.push(second);
+    return list;
   }
 
   /**
@@ -32,7 +140,11 @@ var HisarMatcher = (function () {
     }
     // Prototype-free tables: a page's word "constructor" must not find Object's built-ins.
     var byFirst = Object.create(null);
-    list.phrases.forEach(function (p) { (byFirst[p[0]] = byFirst[p[0]] || []).push(p); });
+    list.phrases.forEach(function (p) {
+      // Numbers alone ("18" of "18+") would match every date and count.
+      if (p.every(function (w) { return /^[0-9]+$/.test(w); })) return;
+      (byFirst[p[0]] = byFirst[p[0]] || []).push(p);
+    });
     var stems = Object.create(null);
     list.stems.forEach(function (s) { stems[s] = true; });
     // Turkish endings by length, so a word needs one lookup per length rather than per ending.
@@ -76,10 +188,10 @@ var HisarMatcher = (function () {
       return result;
     }
 
-    return function (value) {
-      if (value == null) return false;
-      var text = String(value);
-      var w = tokens(text);
+    var unspaced = list.symbols.filter(function (s) { return UNSPACED.test(s); });
+    var symbols = list.symbols.filter(function (s) { return !UNSPACED.test(s); }).map(symbolForm);
+
+    function matchWords(w) {
       var skipUntil = 0;
       for (var i = 0; i < w.length; i++) {
         var allow = allowed[w[i]];
@@ -95,7 +207,22 @@ var HisarMatcher = (function () {
         }
         if (loose(w[i])) return true;
       }
-      for (var s = 0; s < list.symbols.length; s++) if (text.indexOf(list.symbols[s]) >= 0) return true;
+      return false;
+    }
+
+    return function (value) {
+      if (value == null) return false;
+      var text = String(value);
+      var r = readings(text);
+      for (var k = 0; k < r.length; k++) if (matchWords(r[k])) return true;
+      if (symbols.length) {
+        var symbolText = symbolForm(text);
+        for (var s = 0; s < symbols.length; s++) if (symbolText.indexOf(symbols[s]) >= 0) return true;
+      }
+      if (unspaced.length) {
+        var normalized = normalize(text);
+        for (var u = 0; u < unspaced.length; u++) if (normalized.indexOf(unspaced[u]) >= 0) return true;
+      }
       return false;
     };
   }
@@ -171,7 +298,7 @@ var HisarMatcher = (function () {
     };
   }
 
-  return { create: create, fromLists: fromLists, tokens: tokens };
+  return { create: create, fromLists: fromLists, tokens: tokens, readings: readings };
 })();
 
 if (typeof module !== 'undefined') module.exports = HisarMatcher;
