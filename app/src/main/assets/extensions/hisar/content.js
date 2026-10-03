@@ -58,6 +58,8 @@
   var AUDIT_DELAY_MILLIS = 5000;
   /** A card with no more than this much other text left goes with its hidden title. */
   var COLLAPSE_TEXT = 40;
+  /** A changing page's title and tags are checked at most this often. */
+  var SUBJECT_CHECK_MILLIS = 300;
 
   // --- Telling the app ---------------------------------------------------------------------------
 
@@ -489,9 +491,39 @@
     }).catch(function () {});
   }
 
-  // --- The app's requests (top frame only) -----------------------------------------------------------
+  // --- The page's subject (top frame only) -----------------------------------------------------------
 
   if (!isTop) return;
+
+  /**
+   * A page whose own title or tags hold a blocked word or tag is about it (a video's watch page):
+   * the app leaves it. This holds however the page arrived — from the network (where the data
+   * filter usually catches it first), from a site's service worker cache, or by a single-page
+   * app changing pages without a load.
+   */
+  var leftFor = null;
+  function checkSubject() {
+    if (!config.filter) return;
+    var title = document.title || '';
+    var tags = [];
+    document.querySelectorAll('meta[name="keywords"], meta[property="og:video:tag"], meta[property="article:tag"]').forEach(function (meta) {
+      (meta.getAttribute('content') || '').split(',').forEach(function (t) { if (t.trim()) tags.push(t.trim()); });
+    });
+    var blocked = shownBlocked(title) || tags.some(function (t) { return matchers.isTag(t) || shownBlocked(t); });
+    if (!blocked || leftFor === location.href) return;
+    leftFor = location.href;
+    browser.runtime.sendNativeMessage('hisar', { type: 'pageBlocked' }).catch(function () {});
+  }
+  // Titles change as single-page apps move between pages: the <head> is watched, throttled.
+  var subjectTimer = null;
+  var subjectWatcher = new MutationObserver(function () {
+    if (subjectTimer) return;
+    subjectTimer = setTimeout(function () { subjectTimer = null; checkSubject(); }, SUBJECT_CHECK_MILLIS);
+  });
+  document.addEventListener('DOMContentLoaded', function () {
+    checkSubject();
+    if (document.head) subjectWatcher.observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['content'] });
+  });
 
   var port = browser.runtime.connectNative('hisar');
   browser.runtime.sendMessage({ type: 'whoami' }).then(function (me) {

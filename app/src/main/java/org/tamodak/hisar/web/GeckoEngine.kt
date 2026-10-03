@@ -33,6 +33,12 @@ interface EngineEvents {
 
     /** An ad, tracker or harmful-site request was refused. */
     fun onAdBlocked(engineTabId: Int)
+
+    /** A page's own data showed it is about blocked content (a video tagged "trans"): leave it. */
+    fun onPageBlocked(engineTabId: Int)
+
+    /** Data a page fetched was about blocked content as a whole (a video's player data) and was refused. */
+    fun onDataBlocked(engineTabId: Int)
 }
 
 /**
@@ -134,6 +140,8 @@ class GeckoEngine @Inject constructor(
             }
             "blocked" -> events?.onRequestBlocked(message.optInt("tabId", -1))
             "adBlocked" -> events?.onAdBlocked(message.optInt("tabId", -1))
+            "pageBlocked" -> events?.onPageBlocked(message.optInt("tabId", -1))
+            "dataBlocked" -> events?.onDataBlocked(message.optInt("tabId", -1))
             "reply" -> pending.remove(message.optInt("id"))?.complete(message)
             "metrics" -> logMetrics(message)
         }

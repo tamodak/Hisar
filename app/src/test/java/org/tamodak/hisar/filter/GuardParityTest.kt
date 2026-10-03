@@ -25,6 +25,7 @@ class GuardParityTest {
         harmful = DomainList(strings("harmful")),
         words = words,
         searchOnlyWords = WordFilter(strings("searchOnly"), strings("substring"), strings("stems")),
+        tagWords = strings("tags"),
     )
 
     private fun Decision.name(): String = when (this) {

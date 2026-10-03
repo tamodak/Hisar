@@ -74,6 +74,9 @@ echo "Blocked words (LDNOOBW en + tr) and local additions…"
 echo "Search-only words (blocked in searches, not counted on pages)…"
 normalize_words < tools/search-only-words.txt | drop_exceptions > "$OUT/search_words.txt"
 
+echo "Tag words (hide what is tagged with them)…"
+normalize_words < tools/tag-words.txt | drop_exceptions > "$OUT/tag_words.txt"
+
 echo "Looser matching rules, where a dictionary shows they are safe…"
 python3 tools/derive_word_rules.py "$OUT"
 

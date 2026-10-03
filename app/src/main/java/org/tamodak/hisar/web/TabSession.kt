@@ -155,6 +155,7 @@ class TabSession(
             val m = message as? JSONObject ?: return null
             when (m.optString("type")) {
                 "blocked" -> callbacks.onNavigationBlocked(tabId, BlockReason.BLOCKED_WORDS)
+                "pageBlocked" -> callbacks.onPageBlocked(tabId)
                 "metrics" -> engine.logMetrics(m)
             }
             return null

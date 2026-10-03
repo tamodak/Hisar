@@ -1,0 +1,31 @@
+# Tags: a video or post tagged with one of these is about it, whatever its title says (user,
+# 2026-10-03: "if a video has a 'trans' tag it is 100% a trans woman video").
+#
+# Matched only as a tag: a #hashtag in any text ("#trans"), or a value under a tag-like key in
+# data sites send (keywords, tags, hashtags). As a plain word "trans" stays search-only.
+trans
+transgender
+transgirl
+transgirls
+transwoman
+transwomen
+transwomenarewomen
+transcutie
+transmodel
+transmemes
+transpride
+transisbeautiful
+transvisibility
+transtiktok
+transtok
+transbeauty
+transfem
+transfemme
+transfeminine
+transteen
+transkids
+tgirl
+tgirls
+mtf
+mtftransition
+mtfhrt

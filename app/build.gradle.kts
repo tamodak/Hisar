@@ -52,6 +52,12 @@ android {
     }
 }
 
+// The unit tests also run the browser extension's scripts (src/test/js), so they rerun when those change.
+tasks.withType<Test>().configureEach {
+    inputs.dir("src/main/assets/extensions").withPropertyName("extension")
+    inputs.dir("src/test/js").withPropertyName("extensionTests")
+}
+
 room {
     // Exported schemas let future migrations be written and tested against the real history.
     schemaDirectory("$projectDir/schemas")

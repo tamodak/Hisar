@@ -30,6 +30,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import org.mozilla.geckoview.GeckoSession
@@ -592,6 +593,48 @@ class BrowserController(
         engineTabs[engineTabId]?.let(viewModel::onAdBlocked)
     }
 
+    override fun onPageBlocked(engineTabId: Int) {
+        val tabId = engineTabs[engineTabId] ?: currentTabId ?: return
+        leaveBlockedPage(tabId)
+    }
+
+    override fun onPageBlocked(tabId: Long) = leaveBlockedPage(tabId)
+
+    /**
+     * Data a page fetched was refused as a whole. The page itself is left only if it is about the
+     * same thing — its title holds a blocked word or tag (a video's watch page) — checked again
+     * once a newly opened page has had time to set its title. Anything else on a page (a widget, a
+     * recommendation) only goes away by itself.
+     */
+    override fun onDataBlocked(engineTabId: Int) {
+        val tabId = engineTabs[engineTabId] ?: currentTabId ?: return
+        if (leaveIfTitleBlocked(tabId)) return
+        activity.lifecycleScope.launch {
+            delay(TITLE_SETTLE_MILLIS)
+            leaveIfTitleBlocked(tabId)
+        }
+    }
+
+    private fun leaveIfTitleBlocked(tabId: Long): Boolean {
+        val title = viewModel.uiState.value.tab(tabId)?.title.orEmpty()
+        val guard = filters.guardOrNull ?: return false
+        if (title.isBlank() || guard.isClean(title)) return false
+        leaveBlockedPage(tabId)
+        return true
+    }
+
+    /** Back to the last page Hisar allows, or the new tab page; says why. */
+    private fun leaveBlockedPage(tabId: Long) {
+        viewModel.onContentBlocked()
+        val page = sessions[tabId] ?: return
+        page.stop()
+        val target = allowedBackIndex(page)
+        when {
+            target != null -> page.goToHistoryIndex(target)
+            else -> viewModel.showNewTabPage(tabId)
+        }
+    }
+
     // --- Lifecycle -----------------------------------------------------------------------------
 
     fun onStop() {
@@ -616,5 +659,7 @@ class BrowserController(
         const val TOP_SLOP_DP = 24
         const val HIDE_AFTER_DP = 32
         const val SHOW_AFTER_DP = 16
+        /** How long a page that just had data refused gets to set its title. */
+        const val TITLE_SETTLE_MILLIS = 2_000L
     }
 }

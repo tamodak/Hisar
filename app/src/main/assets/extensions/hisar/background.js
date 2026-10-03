@@ -19,6 +19,8 @@ var APP = 'hisar';
 
 var lists = null;
 var matchers = null;
+/** The data filter (json-filter.js), built with the lists. */
+var dataFilter = null;
 var guard = null;
 var simpleCss = null;
 /**
@@ -80,6 +82,7 @@ function onAppMessage(message) {
       matchers = HisarMatcher.fromLists(lists);
       loadDomains().then(function (domains) {
         guard = HisarGuard.create({ ads: domains.ads, harmful: domains.harmful, typed: matchers.typed });
+        dataFilter = HisarJsonFilter.create(matchers);
         return registerContentScripts();
       }).then(function () { resolveReady(); });
       break;
@@ -235,31 +238,27 @@ function decoderFor(charset) {
 }
 
 /**
- * Cleans a document's HTML. It is decoded in its own charset and handed on as UTF-8, so the
- * Content-Type is rewritten to say so (the header outranks the page's own <meta> declaration).
+ * Streams a response through [processor] ({ write(text), end(), result }), decoded in its own
+ * charset and handed on as UTF-8: the Content-Type is rewritten to say so (the header outranks a
+ * page's own <meta> declaration). [onResult] sees the processor's result after each piece and may
+ * return true to cut the response off there.
  */
-function onHeadersReceived(details) {
-  // Off by default: rewriting server-rendered HTML makes frameworks' hydration fail (React
-  // errors on bbc.com), and the content script hides the same text before it is painted.
-  if (!guard || details.statusCode < 200 || details.statusCode >= 300 || !option('html', false)) return {};
-  var headers = details.responseHeaders || [];
-  var type = header(headers, 'content-type');
+function streamThrough(details, headers, type, processor, onResult) {
   var value = type ? type.value : '';
-  if (!/^\s*(text\/html|application\/xhtml\+xml)/i.test(value)) return {};
-
   var declared = charsetOf(value);
   var filter = browser.webRequest.filterResponseData(details.requestId);
-  var html = HisarHtmlFilter.create(matchers.shown);
   var encoder = new TextEncoder();
   var decoder = declared ? decoderFor(declared) : null;
   var head = [];
   var headLength = 0;
   var spentMs = 0;
   var bytesIn = 0;
+  var cut = false;
 
-  function emit(text) { if (text) filter.write(encoder.encode(text)); }
-  function start(bytes) {
-    decoder = decoderFor(sniffCharset(bytes));
+  function emit(text) {
+    if (cut) return;
+    if (text) filter.write(encoder.encode(text));
+    if (onResult && onResult(processor.result)) cut = true;
   }
 
   filter.ondata = function (event) {
@@ -271,23 +270,27 @@ function onHeadersReceived(details) {
       head.push(bytes);
       headLength += bytes.length;
       if (headLength < SNIFF_BYTES) return;
-      var joined = join(head, headLength);
+      bytes = join(head, headLength);
       head = [];
-      start(joined);
-      bytes = joined;
+      decoder = decoderFor(sniffCharset(bytes));
     }
-    emit(html.write(decoder.decode(bytes, { stream: true })));
+    emit(processor.write(decoder.decode(bytes, { stream: true })));
     spentMs += performance.now() - started;
   };
   filter.onstop = function () {
+    var started = performance.now();
     if (!decoder) {
       var joined = join(head, headLength);
-      start(joined);
-      emit(html.write(decoder.decode(joined, { stream: true })));
+      decoder = decoderFor(sniffCharset(joined));
+      emit(processor.write(decoder.decode(joined, { stream: true })));
     }
-    emit(html.write(decoder.decode()) + html.end());
+    emit(processor.write(decoder.decode()) + processor.end());
     filter.close();
-    if (experiment) tell({ type: 'metrics', kind: 'html', url: details.url, ms: Math.round(spentMs), bytes: bytesIn, removed: html.removed });
+    spentMs += performance.now() - started;
+    if (experiment) {
+      var r = processor.result || {};
+      tell({ type: 'metrics', kind: 'data', resource: details.type, url: details.url.slice(0, 120), ms: Math.round(spentMs), bytes: bytesIn, removed: r.removed || 0, blanked: r.blanked || 0, whole: !!r.whole, samples: r.whole ? r.samples : undefined });
+    }
   };
   filter.onerror = function () {};
 
@@ -296,6 +299,77 @@ function onHeadersReceived(details) {
   return { responseHeaders: headers };
 }
 
+/**
+ * Pages' HTML. By default only the data they embed is filtered (the JSON in their <script>s, which
+ * pages like YouTube build themselves from): the page's own text is left to the content script,
+ * since rewriting it makes frameworks' hydration fail (React errors on bbc.com). A page whose
+ * embedded data is about blocked content (a video's player data with its tags) is cut off, and
+ * the app leaves it.
+ */
+function onDocumentHeaders(details) {
+  if (!guard || details.statusCode < 200 || details.statusCode >= 300) return {};
+  var headers = details.responseHeaders || [];
+  var type = header(headers, 'content-type');
+  if (!/^\s*(text\/html|application\/xhtml\+xml)/i.test(type ? type.value : '')) return {};
+
+  if (option('html', false)) {
+    var html = HisarHtmlFilter.create(matchers.shown);
+    return streamThrough(details, headers, type, { write: html.write, end: html.end, result: null });
+  }
+  if (!option('data', true)) return {};
+  var doc = HisarJsonFilter.createDocument(dataFilter);
+  var reported = false;
+  return streamThrough(details, headers, type, doc, function (result) {
+    if (!result.whole || reported) return false;
+    reported = true;
+    tell({ type: details.type === 'main_frame' ? 'pageBlocked' : 'dataBlocked', tabId: details.tabId });
+    return details.type === 'main_frame';
+  });
+}
+
+browser.webRequest.onHeadersReceived.addListener(onDocumentHeaders, { urls: ['<all_urls>'], types: ['main_frame', 'sub_frame'] }, ['blocking', 'responseHeaders']);
+
+// --- Data pages fetch ------------------------------------------------------------------------
+
+/**
+ * JSON that pages fetch — search results, feeds, comments, a video's player data — filtered
+ * whole before the page reads it (json-filter.js): entries with blocked words or tags are taken
+ * out of their lists. A response that is about blocked content as a whole is replaced by an
+ * empty object, and the app says so.
+ */
+function onDataHeaders(details) {
+  if (!guard || !option('data', true) || details.statusCode < 200 || details.statusCode >= 300) return {};
+  var headers = details.responseHeaders || [];
+  var type = header(headers, 'content-type');
+  if (!/json|text\/plain|javascript/i.test(type ? type.value : '')) return {};
+  var parts = [];
+  var length = 0;
+  var processor = {
+    result: { removed: 0, blanked: 0, whole: false },
+    write: function (text) {
+      // JSON can only be judged whole: held until the end, up to a limit.
+      parts.push(text);
+      length += text.length;
+      return '';
+    },
+    end: function () {
+      var text = parts.join('');
+      parts = [];
+      if (length > MAX_DATA) return text;
+      var r = HisarJsonFilter.filterText(dataFilter, text);
+      this.result = { removed: r.removed || 0, blanked: r.blanked || 0, whole: !!r.whole, samples: r.samples };
+      if (r.whole) {
+        tell({ type: 'dataBlocked', tabId: details.tabId });
+        return '{}';
+      }
+      return r.text;
+    },
+  };
+  return streamThrough(details, headers, type, processor, null);
+}
+
+browser.webRequest.onHeadersReceived.addListener(onDataHeaders, { urls: ['<all_urls>'], types: ['xmlhttprequest'] }, ['blocking', 'responseHeaders']);
+
 function join(parts, length) {
   var out = new Uint8Array(length);
   var offset = 0;
@@ -303,13 +377,13 @@ function join(parts, length) {
   return out;
 }
 
-browser.webRequest.onHeadersReceived.addListener(onHeadersReceived, { urls: ['<all_urls>'], types: ['main_frame', 'sub_frame'] }, ['blocking', 'responseHeaders']);
 
-// --- YouTube Restricted Mode -------------------------------------------------------------------
+// --- YouTube Restricted Mode (off) -------------------------------------------------------------
 
 /*
- * The earlier way, kept for comparison ('youtube': 'cookie'): the f2=8000000 Restricted Mode flag
- * in YouTube's PREF cookie, merged back into every top-level YouTube request.
+ * Off by default (user, 2026-10-03): in every level it hides all comments, which users don't
+ * want; Hisar's own filtering of YouTube's data takes its place. Kept as an experiment option:
+ * 'youtube': 'header' (Google's documented YouTube-Restrict header) or 'cookie' (the PREF flag).
  */
 var YT_FLAG = 'f2';
 var YT_RESTRICTED = '8000000';
@@ -321,7 +395,7 @@ function restrictedPref(current) {
 }
 
 function onBeforeSendHeaders(details) {
-  if (option('youtube', 'header') !== 'cookie') return {};
+  if (option('youtube', 'off') !== 'cookie') return {};
   var host = new URL(details.url).hostname;
   if (host !== 'youtube.com' && !/\.youtube\.com$/.test(host)) return {};
   var headers = details.requestHeaders || [];
@@ -346,14 +420,9 @@ function onBeforeSendHeaders(details) {
 
 browser.webRequest.onBeforeSendHeaders.addListener(onBeforeSendHeaders, { urls: ['*://*.youtube.com/*', '*://youtube.com/*'], types: ['main_frame'] }, ['blocking', 'requestHeaders']);
 
-/*
- * The default (YouTube's check_content_restrictions page confirms it, the PREF cookie it does
- * not): the method Google documents for networks: a YouTube-Restrict header on every request to
- * YouTube's web hosts (knowledge.workspace.google.com, "Control YouTube content available").
- */
 var YT_HEADER_HOSTS = ['*://www.youtube.com/*', '*://m.youtube.com/*', '*://youtubei.googleapis.com/*', '*://youtube.googleapis.com/*', '*://www.youtube-nocookie.com/*'];
 browser.webRequest.onBeforeSendHeaders.addListener(function (details) {
-  if (option('youtube', 'header') !== 'header') return {};
+  if (option('youtube', 'off') !== 'header') return {};
   var headers = (details.requestHeaders || []).filter(function (h) { return h.name.toLowerCase() !== 'youtube-restrict'; });
   headers.push({ name: 'YouTube-Restrict', value: 'Strict' });
   return { requestHeaders: headers };
@@ -401,5 +470,7 @@ function setCookie(url, setCookieHeader) {
 var RECONNECT_MILLIS = 500;
 var ASK_TIMEOUT_MILLIS = 10000;
 var SNIFF_BYTES = 1024;
+/** Data responses longer than this (characters) are passed on unfiltered. */
+var MAX_DATA = 16 * 1024 * 1024;
 
 connect();

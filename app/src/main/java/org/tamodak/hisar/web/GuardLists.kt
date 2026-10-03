@@ -10,13 +10,15 @@ import org.tamodak.hisar.filter.WordFilter
  * already tokenised by [WordFilter] so both sides match the same way:
  * - `typed`: what is typed, searched or sent is checked against both lists;
  * - `shown`: what pages show is checked against the main list only, since search-only words
- *   ("olgun", "meme") have innocent everyday uses.
+ *   ("olgun", "meme") have innocent everyday uses;
+ * - `tags`: words that mark what is tagged with them, as a #hashtag or in a tag field.
  */
 object GuardLists {
     fun json(guard: Guard): JSONObject = JSONObject()
         .put("typed", list(guard.searchPhrases, guard.searchSymbols, guard.searchEmbedded, guard.searchStems))
         .put("shown", list(guard.pagePhrases, guard.pageSymbols, guard.pageEmbedded, guard.pageStems))
         .put("suffixes", JSONArray(WordFilter.TURKISH_SUFFIXES))
+        .put("tags", JSONArray(guard.tagWords))
 
     private fun list(phrases: List<List<String>>, symbols: List<String>, embedded: List<String>, stems: List<String>) = JSONObject()
         .put("phrases", JSONArray(phrases.map(::JSONArray)))

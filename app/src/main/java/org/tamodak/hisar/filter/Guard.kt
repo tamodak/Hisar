@@ -30,6 +30,11 @@ class Guard(
      * requests like [words] do, but don't hide anything a page shows.
      */
     private val searchOnlyWords: WordFilter = WordFilter(emptyList()),
+    /**
+     * Tags ("trans", "mtf"): what is tagged with one is about it, whatever its words say. Applied
+     * by the browser extension to #hashtags and to tag fields in the data sites send.
+     */
+    val tagWords: List<String> = emptyList(),
 ) {
     /**
      * The lists for the browser extension (web/GuardLists): everything blocks what is typed and

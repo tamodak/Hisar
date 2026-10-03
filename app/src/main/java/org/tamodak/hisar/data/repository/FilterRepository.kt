@@ -39,7 +39,8 @@ class FilterRepository @Inject constructor(
         val stems = lines("suffix_stems.txt")
         val words = WordFilter(lines("words.txt"), substring, stems)
         val searchOnlyWords = WordFilter(lines("search_words.txt"), substring, stems)
-        Guard(ads, harmful, words, searchOnlyWords).also {
+        val tags = lines("tag_words.txt").map { WordFilter.normalize(it) }
+        Guard(ads, harmful, words, searchOnlyWords, tags).also {
             loaded = it
             Log.i(TAG, "Lists loaded in ${System.currentTimeMillis() - start} ms: ${ads.size} ad/tracker, ${harmful.size} harmful domains")
         }

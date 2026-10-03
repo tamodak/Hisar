@@ -29,7 +29,8 @@ PACKAGE = "org.tamodak.hisar"
 
 # Each strategy changes one thing from "current", except "base", which measures pages untouched.
 STRATEGIES = {
-    "base": {"filter": False, "html": False},
+    "base": {"filter": False, "html": False, "data": False},
+    "nodata": {"data": False},
     "current": {},
     "nohtml": {"html": False},
     "sheet": {"hide": "sheet"},
@@ -60,6 +61,9 @@ SITES = {
     "youtube": "https://m.youtube.com/",
     "yt-search": "https://m.youtube.com/results?search_query=tran",
     "yt-restrict": "https://www.youtube.com/check_content_restrictions",
+    # A video tagged trans (its page should be left) and an innocent one (should play).
+    "yt-watch-trans": "https://m.youtube.com/watch?v=nvR7wK_6UXQ",
+    "yt-watch-ok": "https://m.youtube.com/watch?v=sF-k3j_R31w",
     "google": "https://www.google.com/search?q=kedi&safe=active",
     "wikipedia": "https://en.wikipedia.org/wiki/Venus_de_Milo",
     "bbc": "https://www.bbc.com/news",
@@ -95,7 +99,7 @@ def run_one(device, out, strategy, site, url, attempt):
                 m = json.loads(line[line.index("{"):])
             except ValueError:
                 continue
-            if m.get("kind") == "html":
+            if m.get("kind") in ("html", "data"):
                 html.append(m)
             elif m.get("type") == "metrics" and m.get("kind") is None:
                 page = m
@@ -110,6 +114,7 @@ def run_one(device, out, strategy, site, url, attempt):
             result["page" if key == "url" else key] = page.get(key)
         result["htmlMs"] = sum(h.get("ms", 0) for h in html)
         result["htmlRemoved"] = sum(h.get("removed", 0) for h in html)
+        result["dataWhole"] = sum(1 for h in html if h.get("whole"))
     else:
         result["missing"] = True
     return result

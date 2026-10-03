@@ -90,11 +90,48 @@ var HisarMatcher = (function () {
   }
 
   /**
-   * Both tests from the app's lists: [typed] for what is typed, searched or sent (both lists), and
-   * [shown] for what pages show (the main list only; search-only words have innocent uses).
+   * Tag words ("trans", "mtf"): a #hashtag of one marks what carries it, whatever else it says.
+   * Returns { hashtagged(text), isTag(value) }: isTag tests a value of a tag field ("trans",
+   * "#trans", "trans glow up").
+   */
+  function tagTest(tags) {
+    var set = Object.create(null);
+    (tags || []).forEach(function (t) { set[t] = true; });
+    /** A tag field's value: tags are topics, so any one of its words being a tag word counts. */
+    function isTag(value) {
+      var w = tokens(String(value));
+      for (var i = 0; i < w.length; i++) if (set[w[i]] === true) return true;
+      return false;
+    }
+    var HASHTAG = /#([\p{L}\p{N}_]+)/gu;
+    function hashtagged(text) {
+      if (text == null) return false;
+      var s = String(text);
+      if (s.indexOf('#') < 0) return false;
+      HASHTAG.lastIndex = 0;
+      var m;
+      while ((m = HASHTAG.exec(s)) !== null) {
+        var w = tokens(m[1]);
+        if (w.length === 1 && set[w[0]] === true) return true;
+      }
+      return false;
+    }
+    return { hashtagged: hashtagged, isTag: isTag };
+  }
+
+  /**
+   * The tests from the app's lists: [typed] for what is typed, searched or sent (both lists);
+   * [shown] for what pages show (the main list only — search-only words have innocent uses —
+   * plus hashtags of tag words); [isTag] for values of tag fields in data.
    */
   function fromLists(lists) {
-    return { typed: create(lists.typed, lists.suffixes), shown: create(lists.shown, lists.suffixes) };
+    var tags = tagTest(lists.tags);
+    var shownWords = create(lists.shown, lists.suffixes);
+    return {
+      typed: create(lists.typed, lists.suffixes),
+      shown: function (text) { return shownWords(text) || tags.hashtagged(text); },
+      isTag: tags.isTag,
+    };
   }
 
   return { create: create, fromLists: fromLists, tokens: tokens };

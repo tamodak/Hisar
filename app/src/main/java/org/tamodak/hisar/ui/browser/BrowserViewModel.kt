@@ -333,6 +333,9 @@ class BrowserViewModel @Inject constructor(
         },
     )
 
+    /** A page, or something on it, was about blocked content and was taken away. */
+    fun onContentBlocked() = showMessage(R.string.content_blocked)
+
     // --- Events from the tab's page --------------------------------------------------------------
 
     fun onPageStarted(tabId: Long, url: String, favicon: Bitmap?) = updateTab(tabId) { tab ->
@@ -506,7 +509,8 @@ class BrowserViewModel @Inject constructor(
         return true
     }
 
-    private fun siteOf(url: String) = url.toUri().host?.removePrefix("www.") ?: url
+    /** The site a URL belongs to, for tiles: "www." and the mobile "m." are the same site. */
+    private fun siteOf(url: String) = url.toUri().host?.removePrefix("www.")?.removePrefix("m.") ?: url
 
     fun setSimpleMode(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setSimpleMode(enabled) }

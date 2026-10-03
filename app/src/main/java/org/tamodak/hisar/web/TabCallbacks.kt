@@ -48,6 +48,9 @@ interface TabCallbacks {
      */
     fun onNavigationBlocked(tabId: Long, reason: BlockReason)
 
+    /** The page is about blocked content (its own title or tags say so): leave it. */
+    fun onPageBlocked(tabId: Long)
+
     /** The tab's page told us its id in the engine, so background reports can find the tab. */
     fun onEngineTab(engineTabId: Int, tabId: Long)
 
