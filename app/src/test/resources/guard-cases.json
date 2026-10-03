@@ -13,7 +13,10 @@
       "nude",
       "lesbian",
       "femboy",
-      "hot girls"
+      "hot girls",
+      "gay",
+      "trans man",
+      "⚧"
     ],
     "searchOnly": [
       "olgun",
@@ -28,6 +31,18 @@
     "tags": [
       "trans",
       "mtf"
+    ],
+    "allowed": [
+      "gay lussac"
+    ],
+    "hashtagPrefixes": [
+      "gay",
+      "trans"
+    ],
+    "hashtagWords": [
+      "couple",
+      "goals",
+      "man"
     ]
   },
   "subresource": [
@@ -159,6 +174,21 @@
       "text": "kittens",
       "typed": false,
       "shown": false
+    },
+    {
+      "text": "Gay-Lussac's Law (Gas Laws)",
+      "typed": false,
+      "shown": false
+    },
+    {
+      "text": "TRANS MAN GLOWS UP",
+      "typed": true,
+      "shown": true
+    },
+    {
+      "text": "is she trans?🏳️‍⚧️",
+      "typed": true,
+      "shown": true
     }
   ],
   "html": [
@@ -318,6 +348,32 @@
       },
       "keep": null,
       "whole": false
+    }
+  ],
+  "extensionText": [
+    {
+      "text": "You know we do this #gaycouple #bl",
+      "shown": true
+    },
+    {
+      "text": "He sleeps on me #gaycouplegoals",
+      "shown": true
+    },
+    {
+      "text": "so happy #transman",
+      "shown": true
+    },
+    {
+      "text": "#transformation outfit",
+      "shown": false
+    },
+    {
+      "text": "#transporte publico",
+      "shown": false
+    },
+    {
+      "text": "gayet güzel #gayet",
+      "shown": false
     }
   ]
 }

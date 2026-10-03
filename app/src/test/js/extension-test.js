@@ -49,6 +49,11 @@ for (const c of cases.html) {
   });
 }
 
+// Hashtag compounds, judged by the extension only.
+for (const c of cases.extensionText) {
+  check('hashtags: ' + c.text, () => assert.strictEqual(matchers.shown(c.text), c.shown));
+}
+
 // Data sites send: the smallest entry with a match goes; a response about one blocked thing is
 // blocked whole.
 const HisarJsonFilter = require(path.join(ext, 'json-filter.js'));

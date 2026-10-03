@@ -1,0 +1,21 @@
+# Combinations of ambiguous words, expanded by tools/expand_combinations.py into the main list.
+#
+# Words like "trans", "drag" and "bi" are innocent alone (Trans-Siberian, drag racing, Turkish
+# "bi kız"), so only their combinations with people words are blocked. One line per base word:
+#
+#   base | words after it ("trans" girl) | words before it (chica "trans") | Turkish words after it
+#
+# Turkish words are expanded with their case and plural endings (birey -> bireyin, bireyler...).
+trans | girl girls woman women lady ladies man men guy guys boy boys male female person people kid kids teen teens youth child children couple couples wife husband gf bf girlfriend boyfriend partner wedding love dating community rights tiktok tiktoks tiktoker creator influencer model models babe babes beauty bride actress actor athlete athletes swimmer identity journey story stories life vlog pride flag reveal glow transformation timeline surgery hrt voice masc fem femme cutie memes meme joy visibility awareness day flag hormones moment | chica chicas mujer mujeres chico chicos hombre hombres femme homme garota garotas mulher mulheres homem homens menino menina frau mann | kadın kız erkek birey kişi çift sevgili eş anne baba genç çocuk
+transgender | girl girls woman women man men boy boys person people kid kids teen couple | | kadın kız erkek birey kişi çift
+drag | queen queens king kings show shows performer performers makeover makeup artist ball brunch story hour | | kraliçe kraliçesi
+bi | girl girls guy guys boy boys woman women man men couple pride flag erasure visibility | |
+queer | | | kadın erkek birey çift
+lesbian | | | çift
+gay | | | çift erkek
+non binary | person people kid kids friend teen | | birey kişi
+nonbinary | person people kid kids friend teen | | birey kişi
+femboy | | | erkek
+sissy | | | erkek
+ace | spectrum flag | |
+rainbow | family families flag | |

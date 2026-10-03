@@ -19,13 +19,15 @@ class GuardParityTest {
     private val lists = cases.getJSONObject("lists")
     private fun strings(name: String) = lists.getJSONArray(name).let { a -> (0 until a.length()).map(a::getString) }
 
-    private val words = WordFilter(strings("words"), strings("substring"), strings("stems"))
+    private val words = WordFilter(strings("words"), strings("substring"), strings("stems"), strings("allowed"))
     private val guard = Guard(
         ads = DomainList(strings("ads")),
         harmful = DomainList(strings("harmful")),
         words = words,
-        searchOnlyWords = WordFilter(strings("searchOnly"), strings("substring"), strings("stems")),
+        searchOnlyWords = WordFilter(strings("searchOnly"), strings("substring"), strings("stems"), strings("allowed")),
         tagWords = strings("tags"),
+        hashtagPrefixes = strings("hashtagPrefixes"),
+        hashtagWords = strings("hashtagWords"),
     )
 
     private fun Decision.name(): String = when (this) {

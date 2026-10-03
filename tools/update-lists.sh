@@ -69,6 +69,8 @@ echo "Blocked words (LDNOOBW en + tr) and local additions…"
     echo
     # Hisar's own additions, one per line; lines starting with # are comments.
     grep -vE '^[[:space:]]*(#|$)' tools/extra-words.txt || true
+    # Combinations of ambiguous words ("trans man", "drag queen"), with Turkish endings.
+    python3 tools/expand_combinations.py tools/combinations.txt
 } | normalize_words | drop_exceptions > "$OUT/words.txt"
 
 echo "Search-only words (blocked in searches, not counted on pages)…"
@@ -76,6 +78,13 @@ normalize_words < tools/search-only-words.txt | drop_exceptions > "$OUT/search_w
 
 echo "Tag words (hide what is tagged with them)…"
 normalize_words < tools/tag-words.txt | drop_exceptions > "$OUT/tag_words.txt"
+
+echo "Allowed phrases (a blocked word meaning something else)…"
+normalize_words < tools/allowed-phrases.txt > "$OUT/allowed_phrases.txt"
+
+echo "Hashtag compounds (#gaycouple, #transman)…"
+normalize_words < tools/hashtag-prefixes.txt > "$OUT/hashtag_prefixes.txt"
+normalize_words < tools/hashtag-words.txt > "$OUT/hashtag_words.txt"
 
 echo "Looser matching rules, where a dictionary shows they are safe…"
 python3 tools/derive_word_rules.py "$OUT"

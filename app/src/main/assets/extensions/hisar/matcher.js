@@ -22,7 +22,14 @@ var HisarMatcher = (function () {
    * A test for one list: { phrases: [[word…]…], symbols: […], embedded: […], stems: […] }, with
    * the shared Turkish [suffixes]. True if the text holds any entry.
    */
-  function create(list, suffixes) {
+  function create(list, suffixes, allowedPhrases) {
+    var allowed = Object.create(null);
+    (allowedPhrases || []).forEach(function (p) { (allowed[p[0]] = allowed[p[0]] || []).push(p); });
+    function startsAt(w, i, p) {
+      if (i + p.length > w.length) return false;
+      for (var j = 0; j < p.length; j++) if (w[i + j] !== p[j]) return false;
+      return true;
+    }
     // Prototype-free tables: a page's word "constructor" must not find Object's built-ins.
     var byFirst = Object.create(null);
     list.phrases.forEach(function (p) { (byFirst[p[0]] = byFirst[p[0]] || []).push(p); });
@@ -73,7 +80,11 @@ var HisarMatcher = (function () {
       if (value == null) return false;
       var text = String(value);
       var w = tokens(text);
+      var skipUntil = 0;
       for (var i = 0; i < w.length; i++) {
+        var allow = allowed[w[i]];
+        if (allow) for (var a = 0; a < allow.length; a++) if (startsAt(w, i, allow[a])) skipUntil = Math.max(skipUntil, i + allow[a].length);
+        if (i < skipUntil) continue;
         var candidates = byFirst[w[i]];
         if (candidates) {
           for (var c = 0; c < candidates.length; c++) {
@@ -94,13 +105,39 @@ var HisarMatcher = (function () {
    * Returns { hashtagged(text), isTag(value) }: isTag tests a value of a tag field ("trans",
    * "#trans", "trans glow up").
    */
-  function tagTest(tags) {
+  function tagTest(tags, prefixes, joinable) {
     var set = Object.create(null);
     (tags || []).forEach(function (t) { set[t] = true; });
+    var prefixList = (prefixes || []).slice().sort(function (a, b) { return b.length - a.length; });
+    var words = Object.create(null);
+    var longest = 0;
+    (joinable || []).forEach(function (w) { words[w] = true; longest = Math.max(longest, w.length); });
+
+    /** True if [rest] is a number, or splits wholly into joinable words ("couplegoals"). */
+    function joins(rest) {
+      if (/^[0-9]+$/.test(rest)) return true;
+      var can = [true];
+      for (var end = 1; end <= rest.length; end++) {
+        can[end] = false;
+        for (var start = Math.max(0, end - longest); start < end && !can[end]; start++) {
+          if (can[start] && words[rest.slice(start, end)] === true) can[end] = true;
+        }
+      }
+      return can[rest.length] === true;
+    }
+
+    /** A hashtag that joins an identity word with joinable words: #gaycouple, #transman, #pride2024. */
+    function compound(tag) {
+      for (var i = 0; i < prefixList.length; i++) {
+        var p = prefixList[i];
+        if (tag.length > p.length && tag.slice(0, p.length) === p && joins(tag.slice(p.length))) return true;
+      }
+      return false;
+    }
     /** A tag field's value: tags are topics, so any one of its words being a tag word counts. */
     function isTag(value) {
       var w = tokens(String(value));
-      for (var i = 0; i < w.length; i++) if (set[w[i]] === true) return true;
+      for (var i = 0; i < w.length; i++) if (set[w[i]] === true || compound(w[i])) return true;
       return false;
     }
     var HASHTAG = /#([\p{L}\p{N}_]+)/gu;
@@ -111,8 +148,8 @@ var HisarMatcher = (function () {
       HASHTAG.lastIndex = 0;
       var m;
       while ((m = HASHTAG.exec(s)) !== null) {
-        var w = tokens(m[1]);
-        if (w.length === 1 && set[w[0]] === true) return true;
+        var w = tokens(m[1].replace(/_/g, ''));
+        if (w.length === 1 && (set[w[0]] === true || compound(w[0]))) return true;
       }
       return false;
     }
@@ -125,10 +162,10 @@ var HisarMatcher = (function () {
    * plus hashtags of tag words); [isTag] for values of tag fields in data.
    */
   function fromLists(lists) {
-    var tags = tagTest(lists.tags);
-    var shownWords = create(lists.shown, lists.suffixes);
+    var tags = tagTest(lists.tags, lists.hashtagPrefixes, lists.hashtagWords);
+    var shownWords = create(lists.shown, lists.suffixes, lists.allowed);
     return {
-      typed: create(lists.typed, lists.suffixes),
+      typed: create(lists.typed, lists.suffixes, lists.allowed),
       shown: function (text) { return shownWords(text) || tags.hashtagged(text); },
       isTag: tags.isTag,
     };

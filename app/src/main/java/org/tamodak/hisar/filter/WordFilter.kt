@@ -24,6 +24,11 @@ class WordFilter(
     entries: Collection<String>,
     substringWords: Collection<String> = emptyList(),
     suffixStems: Collection<String> = emptyList(),
+    /**
+     * Phrases in which a blocked word means something else ("gay lussac", the gas law): their
+     * words are skipped.
+     */
+    allowedPhrases: Collection<String> = emptyList(),
 ) {
     /** Phrases keyed by their first word; a single word is a one-word phrase. */
     private val phrases: Map<String, List<List<String>>>
@@ -46,6 +51,12 @@ class WordFilter(
         phrases = byFirst
         symbols = symbolEntries
     }
+
+    private val allowed: Map<String, List<List<String>>> =
+        allowedPhrases.map(::tokenize).filter { it.isNotEmpty() }.groupBy { it.first() }
+
+    /** The allowed phrases, for the in-page script. */
+    val allowedList: List<List<String>> get() = allowed.values.flatten()
 
     private val singleWords: Set<String> = phrases.values.flatten().filter { it.size == 1 }.mapTo(HashSet()) { it[0] }
     private val stems: Set<String> = suffixStems.map(::normalize).filterTo(HashSet()) { it in singleWords }
@@ -70,8 +81,12 @@ class WordFilter(
     fun findMatches(text: String): List<String> {
         val found = ArrayList<String>()
         val words = tokenize(text)
+        var skipUntil = 0
         for (i in words.indices) {
             val word = words[i]
+            allowed[word]?.firstOrNull { p -> i + p.size <= words.size && p.indices.all { words[i + it] == p[it] } }
+                ?.let { skipUntil = maxOf(skipUntil, i + it.size) }
+            if (i < skipUntil) continue
             val before = found.size
             phrases[word]?.forEach { phrase ->
                 if (i + phrase.size <= words.size && phrase.indices.all { words[i + it] == phrase[it] }) {

@@ -37,10 +37,15 @@ class FilterRepository @Inject constructor(
         fun lines(name: String) = assets.open("extensions/hisar/lists/$name").use(WordFilter::readLines)
         val substring = lines("substring_words.txt")
         val stems = lines("suffix_stems.txt")
-        val words = WordFilter(lines("words.txt"), substring, stems)
-        val searchOnlyWords = WordFilter(lines("search_words.txt"), substring, stems)
+        val allowed = lines("allowed_phrases.txt")
+        val words = WordFilter(lines("words.txt"), substring, stems, allowed)
+        val searchOnlyWords = WordFilter(lines("search_words.txt"), substring, stems, allowed)
         val tags = lines("tag_words.txt").map { WordFilter.normalize(it) }
-        Guard(ads, harmful, words, searchOnlyWords, tags).also {
+        Guard(
+            ads, harmful, words, searchOnlyWords, tags,
+            hashtagPrefixes = lines("hashtag_prefixes.txt").map { WordFilter.normalize(it) },
+            hashtagWords = lines("hashtag_words.txt").map { WordFilter.normalize(it) },
+        ).also {
             loaded = it
             Log.i(TAG, "Lists loaded in ${System.currentTimeMillis() - start} ms: ${ads.size} ad/tracker, ${harmful.size} harmful domains")
         }

@@ -1,0 +1,43 @@
+# Hashtag compounds: a hashtag that is one of these words joined with words from
+# tools/hashtag-words.txt (#gaycouple, #transman, #dragqueen, #boytogirlmakeup) or with a number
+# (#pride2024) counts as that word. Joined with anything else it doesn't: #transformation,
+# #transporte, #dragon and Turkish #gayet stay. Words are spelled as hashtags: no spaces.
+trans
+transgender
+transsexual
+gay
+lesbian
+lezbiyen
+queer
+lgbt
+lgbtq
+lgbtqia
+lgbtqiaplus
+bisexual
+pansexual
+femboy
+drag
+crossdress
+crossdressing
+crossdresser
+sissy
+mtf
+ftm
+nonbinary
+enby
+transmasc
+transfem
+boytogirl
+girltoboy
+maletofemale
+femaletomale
+mantowoman
+womantoman
+wlw
+sapphic
+eşcinsel
+escinsel
+travesti
+pride
+theythem
+samesex

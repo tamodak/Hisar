@@ -1,0 +1,5 @@
+# Phrases in which a blocked word means something else: their words are not matched.
+# Add only after checking real results (tools/experiments).
+gay lussac
+gay lussacs
+gay lussac s

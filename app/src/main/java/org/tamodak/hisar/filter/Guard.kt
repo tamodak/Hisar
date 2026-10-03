@@ -35,11 +35,18 @@ class Guard(
      * by the browser extension to #hashtags and to tag fields in the data sites send.
      */
     val tagWords: List<String> = emptyList(),
+    /**
+     * Hashtag compounds: a hashtag joining one of [hashtagPrefixes] ("gay", "trans") with words of
+     * [hashtagWords] ("couple", "man") or a number counts like the word itself (#gaycouple).
+     */
+    val hashtagPrefixes: List<String> = emptyList(),
+    val hashtagWords: List<String> = emptyList(),
 ) {
     /**
      * The lists for the browser extension (web/GuardLists): everything blocks what is typed and
      * submitted; only [words] hides what pages show, as search-only words have innocent uses.
      */
+    val allowedPhrases: List<List<String>> get() = words.allowedList
     val searchPhrases: List<List<String>> get() = words.phraseList + searchOnlyWords.phraseList
     val searchSymbols: List<String> get() = words.symbolList + searchOnlyWords.symbolList
     val pagePhrases: List<List<String>> get() = words.phraseList

@@ -19,3 +19,5 @@ local.properties
 
 # Locally built APKs kept around for installing on test devices.
 /dist
+tools/experiments/coverage/data/
+__pycache__/

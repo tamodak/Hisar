@@ -405,3 +405,241 @@ garota trans
 mulher trans
 femme trans
 
+
+# --- Gender identity and sexual orientation (user, 2026-10-03: measured gaps on YouTube) -------
+# Unambiguous words and phrases. Combinations of ambiguous words ("trans man", "drag queen",
+# "pride month") are generated from tools/combinations.txt; hashtag compounds (#gaycouple) and
+# emoji flags have their own lists (tools/hashtag-prefixes.txt, tools/symbols.txt).
+transman
+transmen
+transboy
+transboys
+transguy
+transguys
+transmasc
+transmasculine
+transfeminine
+transfemme
+transsexuals
+transeksüel
+transeksuel
+transeksüeller
+transseksüeller
+transgenderism
+transgendered
+transvestite
+transvestites
+crossdresser
+crossdressers
+crossdressing
+crossdress
+crossdressed
+cross dresser
+cross dressers
+cross dressing
+crossdressing boys
+travestiler
+nonbinary
+non binary
+enby
+enbies
+genderfluid
+gender fluid
+genderqueer
+gender queer
+agender
+bigender
+demigirl
+demiboy
+two spirit
+pangender
+xenogender
+pansexual
+pansexuals
+panseksüel
+omnisexual
+polysexual
+homoseksüel
+homoseksüeller
+homoseksüellik
+homoseksuel
+eşcinseller
+escinsel
+escinseller
+eşcinsellik
+lubunya
+lubunyalar
+gay
+gays
+gey
+geyler
+lezbiyenler
+lezbiyenlik
+biseksüeller
+wlw
+t4t
+sapphic
+sapphics
+achillean
+boys love
+boyslove
+bl drama
+bl series
+bl dizi
+bl dizisi
+thai bl
+bl couple
+bl kiss
+gl series
+gl drama
+yuri
+yaoi
+shounen ai
+shonen ai
+shoujo ai
+they them
+she they
+he they
+she her pronouns
+he him pronouns
+they them pronouns
+my pronouns
+neopronouns
+xe xem
+misgendered
+misgendering
+deadname
+deadnamed
+deadnaming
+top surgery
+bottom surgery
+lower surgery
+gender surgery
+sex reassignment
+gender reassignment
+sex change
+sex change surgery
+gender affirming
+gender affirmation
+gender transition
+gender dysphoria
+cinsiyet değiştirme
+cinsiyet değiştiren
+cinsiyet uyum
+cinsiyet geçişi
+boy to girl
+girl to boy
+boys to girls
+man to woman
+woman to man
+male to female
+female to male
+m2f
+f2m
+mtf transition
+ftm transition
+mtf transformation
+ftm transformation
+mtf edition
+ftm edition
+mtf timeline
+ftm timeline
+mtf hrt
+ftm hrt
+trans mtf
+trans ftm
+mtf trans
+ftm trans
+boyfriend to girlfriend
+husband to wife
+erkekten kadına
+kadından erkeğe
+kızdan erkeğe
+erkekten kıza
+dressed as a girl
+dressed like a girl
+dress as a girl
+boy in a dress
+boy in dress
+man in a dress
+men in dresses
+boys in dresses
+kız kılığına
+kadın kılığına
+kız gibi giyinen
+kadın gibi giyinen
+sissy boy
+sissy husband
+sissy training
+sissy maid
+sissy boyfriend
+sissification
+feminization
+forced feminization
+feminized
+femboys
+femboyfriday
+femboy friday
+same sex
+same sex couple
+same sex marriage
+same sex wedding
+same sex love
+aynı cinsten
+two moms
+two dads
+2 moms
+2 dads
+iki annesi
+iki babası
+gay pride
+pride month
+pride parade
+pride march
+pride flag
+pride week
+pride festival
+lgbt pride
+trans pride
+onur yürüyüşü
+onur yuruyusu
+onur ayı
+onur haftası
+rainbow flag
+gökkuşağı bayrağı
+
+# --- Symbols: flags and couples (matched as they are, anywhere in text) ------------------------
+# ⚧ is in every transgender flag and symbol; the rainbow flag with and without its variation
+# selector; same-sex couple emoji.
+⚧
+⚢
+⚣
+🏳️‍🌈
+🏳‍🌈
+👩‍❤️‍👩
+👩‍❤‍👩
+👨‍❤️‍👨
+👨‍❤‍👨
+👩‍❤️‍💋‍👩
+👩‍❤‍💋‍👩
+👨‍❤️‍💋‍👨
+👨‍❤‍💋‍👨
+
+# --- From the measured gaps of 2026-10-03 -----------------------------------------------------
+boy to a girl
+girl to a boy
+boy into a girl
+girl into a boy
+they thems
+before and after estrogen
+on estrogen
+months on estrogen
+months on t
+years on t
+year on t
+estrogen journey
+testosterone journey
+drag olmak
+drag sanatçısı
+drag sanatçıları
+
