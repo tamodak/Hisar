@@ -232,6 +232,28 @@ algospeak glossaries, emoji sexting glossaries, evasion research, word-frequency
 **Measured:** topic results 581 of 728 removed (45 searches, 9 languages); innocent 0 of 864
 (48 searches chosen to probe collisions). List build 10+ minutes → 6.5 s.
 
+## 12. Names and titles
+
+**Asked for:** well-known OnlyFans creators and porn performers, porn and erotic films, and
+mainstream films and series with sex scenes (Game of Thrones) — "the more we can cover, the
+better".
+
+**Built:**
+- `tools/words/names.txt`: ~300 performers, OnlyFans/Fansly creators, Japanese AV performers (in
+  Latin and Japanese script) and Turkish erotic film stars of the 1970s; full names only.
+- `tools/words/titles.txt`: ~520 porn and erotic films, art-house and mainstream films and series
+  with sex scenes, their titles in other languages, characters known only from them, adult anime,
+  games, studios, magazines, Indian adult streaming apps, leak sites and "spicy" book phrases.
+- Both are also added joined, as hashtags (#gameofthrones, #miakhalifa).
+- Titles that are everyday words (Euphoria, Girls, Rome, 365 Days, Saltburn) go through
+  `combinations.txt` ("euphoria hbo", "euphoria s02e03", "euphoria dizisi") and, where the hashtag
+  is unambiguous, `tag-words.txt`.
+- Left out: mainstream celebrities who also have OnlyFans, names that are common names or read
+  as a sentence ("Autumn Falls"), titles that are ordinary phrases with no safe qualifier.
+
+**Measured:** topic results 611 → 755 of 921 removed; innocent 18 of 1244, all about the blocked
+series except Watergate's "Deep Throat" (already blocked as the film's title).
+
 ---
 
 ## Where things stand
@@ -248,7 +270,7 @@ algospeak glossaries, emoji sexting glossaries, evasion research, word-frequency
 5. Page (`content.js`): anything left is hidden as it appears; submits, taps and pastes with
    blocked words stopped.
 
-**Lists:** ~94k adult and gambling domains, ~75k ad/tracker domains, ~5,800 word entries in 15
+**Lists:** ~94k adult and gambling domains, ~75k ad/tracker domains, ~10,500 word entries in 15
 languages plus emoji, tags and hashtag compounds.
 
 **Known limits:**

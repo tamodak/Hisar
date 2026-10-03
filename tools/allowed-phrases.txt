@@ -11,3 +11,8 @@ dick cheney
 dick grayson
 dick clark
 ford escort
+# Names and titles from tools/words/names.txt and titles.txt shared with something innocent.
+lisa ann walter
+bonnie blue flag
+bonnie blue butler
+starless and bible black

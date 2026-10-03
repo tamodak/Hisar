@@ -1,0 +1,300 @@
+# Names of people known for adult content: pornographic film performers, OnlyFans and other
+# subscription-site creators, webcam models, Japanese AV performers, and the stars of Turkish
+# erotic films of the 1970s. Full names only, matched as whole-word phrases, so a first name
+# alone ("Mia", "Riley") is never blocked.
+#
+# Left out on purpose: mainstream musicians, actors and influencers who also have an OnlyFans
+# account (blocking them would hide their music and films), anyone whose fame came from being a
+# victim of a leak, and single-word stage names that are everyday words (Belladonna, Seka) — only
+# their combinations are here ("belladonna porn"). Full names that are common names or read as a
+# sentence ("Autumn Falls", "Natasha, nice") are left out too. Names shared with well-known
+# people outside adult content get an allowed phrase (tools/allowed-phrases.txt: "lisa ann walter").
+
+# --- Performers, current and recent ----------------------------------------------------------
+mia khalifa
+riley reid
+lana rhoades
+abella danger
+angela white
+johnny sins
+kissa sins
+lisa ann
+sasha grey
+jenna jameson
+mia malkova
+adriana chechik
+alexis texas
+asa akira
+sunny leone
+eva elfie
+sweetie fox
+dani daniels
+brandi love
+kendra lust
+ava addams
+nicole aniston
+madison ivy
+tori black
+gianna michaels
+kagney linn karter
+lexi belle
+jenna haze
+tera patrick
+bree olson
+kayden kross
+elsa jean
+gabbie carter
+violet myers
+emily willis
+kenzie reeves
+piper perri
+valentina nappi
+skin diamond
+alexis fawx
+cory chase
+nina hartley
+jesse jane
+bonnie rotten
+phoenix marie
+remy lacroix
+leah gotti
+dillion harper
+kimmy granger
+anissa kate
+kendra sunderland
+gina valentina
+eliza ibarra
+blake blossom
+coco lovelock
+alex coal
+kenna james
+vina sky
+jada stevens
+kiara mia
+vicky vette
+julia ann
+sophie dee
+kelsi monroe
+lexi luna
+cherie deville
+reagan foxx
+sara jay
+sarah vandella
+rachel starr
+ana foxxx
+teanna trump
+eva notty
+nikki benz
+kitana flores
+little caprice
+lela star
+romi rain
+brett rossi
+august ames
+jessa rhodes
+keisha grey
+abigail mac
+aidra fox
+alina lopez
+ariana marie
+aria lee
+august taylor
+avery cristy
+anya olsen
+bridgette b
+britney amber
+cali carter
+carter cruise
+casey calvert
+chanel preston
+charlotte stokely
+chloe cherry
+daisy stone
+dana dearmond
+dana vespoli
+diamond foxxx
+gia derza
+gia paige
+hime marie
+holly hendrix
+jill kassidy
+jillian janson
+joanna angel
+jynx maze
+kali roses
+karlee grey
+katana kombat
+kayley gunner
+kimber woods
+kira noir
+krissy lynn
+lacy lennon
+lena reif
+lily larimar
+lulu chu
+mandy muse
+marica hase
+marley brinx
+mckenzie lee
+melody marks
+mia melano
+nicole doshi
+nina elle
+penny pax
+quinn wilde
+richelle ryan
+riley star
+sabina rouge
+savannah bond
+scarlit scandal
+sheena ryder
+siri dahl
+skylar vox
+sophia locke
+stella cox
+syren de mer
+tiffany watson
+vanna bardot
+veronica leal
+vicki chase
+xxlayna marie
+zoe sparx
+jia lissa
+lilu moon
+kristy black
+cathy heaven
+clea gaultier
+anna polina
+lana roy
+angel emily
+lily lou
+lily phillips
+bonnie blue
+# --- Male performers -----------------------------------------------------------------------
+rocco siffredi
+ron jeremy
+manuel ferrara
+keiran lee
+danny d
+james deen
+peter north
+jordi el nino polla
+jordi el niño polla
+jordi enp
+mick blue
+xander corvus
+ramon nomar
+erik everhard
+nacho vidal
+lexington steele
+seth gamble
+codey steele
+damon dice
+# --- Classic era (1970s–2000s) --------------------------------------------------------------
+linda lovelace
+marilyn chambers
+ginger lynn
+christy canyon
+traci lords
+harry reems
+vanessa del rio
+annette haven
+seka porn
+nina mercedez
+briana banks
+janine lindemulder
+asia carrera
+silvia saint
+belladonna porn
+houston porn
+savanna samson
+stormy daniels
+carmen luvana
+kobe tai
+aria giovanni
+jenna presley
+monica mayhem
+taylor rain
+sophia santi
+# --- OnlyFans, Fansly and webcam creators ----------------------------------------------------
+belle delphine
+amouranth
+corinna kopf
+sophie rain
+breckie hill
+camilla araujo
+alva jay
+jem wolfie
+lily brown onlyfans
+bhad bhabie onlyfans
+sky bri
+ari kytsya
+maitland ward
+lana rose onlyfans
+kitty lixo
+dainty wilder
+gwen gwiz
+danielle bregoli onlyfans
+astrid wett
+elle brooke
+lily phillips onlyfans
+annie knight onlyfans
+bonnie blue onlyfans
+sienna rose onlyfans
+maddie price
+kiara mia onlyfans
+rae lil black
+# --- Japanese AV (romanised and in Japanese) ----------------------------------------------
+yua mikami
+三上悠亜
+eimi fukada
+深田えいみ
+sola aoi
+蒼井そら
+maria ozawa
+小澤マリア
+tsukasa aoi
+葵つかさ
+ai uehara
+上原亜衣
+shoko takahashi
+高橋しょう子
+kana momonogi
+桃乃木かな
+yui hatano
+波多野結衣
+saori hara
+原紗央莉
+mia nanasawa
+七沢みあ
+rina ishihara
+石原莉奈
+akari tsumugi
+紗倉まな
+mana sakura
+明日花キララ
+kirara asuka
+julia boin
+河北彩花
+saika kawakita
+楓カレン
+karen kaede
+伊藤舞雪
+mayuki ito
+相沢みなみ
+minami aizawa
+橋本ありな
+arina hashimoto
+天使もえ
+moe amatsuka
+大槻ひびき
+hibiki otsuki
+吉沢明歩
+akiho yoshizawa
+麻美ゆま
+yuma asami
+# --- Turkish erotic film stars (1970s) ------------------------------------------------------
+zerrin egeliler
+arzu okay
+mine mutlu
+feri cansel

@@ -1,0 +1,549 @@
+# Titles: pornographic and erotic films, mainstream films and series with sex scenes or a sexual
+# subject, adult anime and games, adult studios, magazines and adult streaming apps. Matched as
+# whole-word phrases, so a search, video or post naming them is stopped like any other blocked
+# word.
+#
+# Only titles that are not everyday phrases are here. A title that is also a common word or
+# phrase ("Euphoria", "Girls", "Rome", "Shameless", "365 Days", "American Pie") is in
+# tools/combinations.txt instead, blocked only together with words that make it the title
+# ("euphoria hbo", "euphoria dizisi", "365 days netflix"). Titles shared with innocent phrases get
+# an allowed phrase ("where the wild things are", "starless and bible black").
+
+# --- Pornographic and erotic classics ------------------------------------------------------
+deep throat film
+deep throat movie
+behind the green door
+the devil in miss jones
+debbie does dallas
+the opening of misty beethoven
+story of o
+histoire d'o
+emmanuelle film
+emmanuelle movie
+emmanuelle 2024
+emanuelle nera
+black emanuelle
+caligula 1979
+caligula film
+caligula movie
+last tango in paris
+ultimo tango a parigi
+in the realm of the senses
+ai no corrida
+salo or the 120 days of sodom
+120 days of sodom
+nine and a half weeks
+9 1/2 weeks
+9½ weeks
+red shoe diaries
+zalman king
+lady chatterley's lover
+lady chatterley
+fanny hill
+tinto brass
+cosi fan tutte tinto brass
+paprika tinto brass
+the key tinto brass
+pirates 2005 digital playground
+pirates ii stagnetti's revenge
+# --- Erotic and sexually explicit art-house and mainstream films ---------------------------
+nymphomaniac
+shortbus
+love 2015 gaspar noe
+gaspar noé love
+blue is the warmest colour
+blue is the warmest color
+la vie d'adèle
+la vie d adele
+lust caution
+lust, caution
+the handmaiden
+basic instinct
+showgirls
+eyes wide shut
+body heat 1981
+wild things 1998
+fifty shades of grey
+fifty shades darker
+fifty shades freed
+50 shades of grey
+50 shades darker
+50 shades freed
+365 dni
+365 days this day
+365 days the next 365 days
+the next 365 days
+babygirl 2024
+babygirl nicole kidman
+anora film
+anora movie
+y tu mamá también
+y tu mama tambien
+call me by your name
+brokeback mountain
+portrait of a lady on fire
+portrait de la jeune fille en feu
+the dreamers bertolucci
+malena monica bellucci
+secretary 2002
+monster's ball
+gone girl sex scene
+the wolf of wall street
+don jon
+magic mike
+magic mike xxl
+magic mike's last dance
+striptease 1996
+boogie nights
+lovelace 2013
+the people vs larry flynt
+below her mouth
+sex and the city
+sex lives of the college girls
+sex/life
+sex life netflix
+irreversible gaspar noe
+irréversible
+enter the void
+climax gaspar noe
+antichrist lars von trier
+the idiots lars von trier
+romance 1999 catherine breillat
+fat girl breillat
+the brown bunny
+intimacy 2001
+lolita 1997
+lolita 1962
+unfaithful 2002
+the reader 2008
+chloe 2009
+original sin 2001
+indecent proposal
+sliver 1993
+jade 1995
+color of night
+disclosure 1994
+the lover 1992
+the unbearable lightness of being
+henry and june
+crash cronenberg
+dangerous liaisons
+cruel intentions
+mulholland drive film
+the room tommy wiseau
+porky's
+fast times at ridgemont high
+superbad
+american pie film
+road trip 2000
+eurotrip
+the girl next door 2004
+zack and miri make a porno
+friends with benefits
+love & other drugs
+love and other drugs
+knocked up
+forgetting sarah marshall
+the 40 year old virgin
+sausage party
+blockers 2018
+booksmart
+deadpool sex scene
+passengers sex scene
+titanic car scene
+titanic drawing scene
+blonde 2022
+blonde netflix
+marilyn monroe blonde film
+the girlfriend experience
+pleasure 2021
+stranger by the lake
+l'inconnu du lac
+moonlight sex scene
+carol 2015
+disobedience 2017
+bound 1996
+mulholland drive lesbian
+black swan lesbian
+black swan sex scene
+jennifer's body
+cherry 2021
+the notebook sex scene
+a serbian film
+salo pasolini
+killer joe
+under the skin scarlett johansson
+lucy scarlett johansson sex
+naked lunch
+caligula ultimate cut
+sexy beast
+bad lieutenant
+the wolf of wall street scene
+babylon 2022
+babylon margot robbie
+the substance 2024
+the substance demi moore
+pearl 2022 mia goth
+x 2022 ti west
+x mia goth
+maxxxine
+challengers sex scene
+poor things sex scene
+# --- Series with sex scenes or a sexual subject -------------------------------------------
+game of thrones
+got sex scene
+house of the dragon
+the idol hbo
+the idol series
+westworld
+true blood
+spartacus blood and sand
+spartacus gods of the arena
+spartacus vengeance
+spartacus war of the damned
+borgia series
+outlander
+bridgerton
+queen charlotte a bridgerton story
+californication
+masters of sex
+sex education
+sense8
+the l word
+the l word generation q
+queer as folk
+orange is the new black
+human resources netflix
+hung hbo
+boardwalk empire
+the witcher sex scene
+american gods
+the boys sex scene
+peaky blinders sex scene
+the white lotus
+yellowjackets sex scene
+fleabag
+the handmaid's tale
+13 reasons why
+thirteen reasons why
+gossip girl
+you netflix love scene
+bonding netflix
+love island
+naked attraction
+temptation island
+ex on the beach
+geordie shore
+dating naked
+sex sent me to the er
+the girlfriend experience series
+the girlfriend experience starz
+p valley
+power starz
+tokyo vice
+the great hulu
+the serpent queen
+the last kingdom sex scene
+vikings sex scene
+rome hbo
+big little lies
+dirty sexy money
+desperate housewives
+grey's anatomy sex scene
+hotel babylon
+secret diary of a call girl
+the client list
+satisfaction usa
+the girlfriend experience
+diary of a sex addict
+sex lives of the college girls
+élite netflix
+elite netflix
+elite series
+toy boy netflix
+las chicas del cable
+cable girls
+sky rojo
+valeria netflix
+la casa de papel sex scene
+money heist sex scene
+dark netflix sex scene
+baby netflix
+baby italian series
+summertime netflix
+marseille netflix
+osmosis netflix
+sex/life netflix
+sexify
+sexify netflix
+365 days netflix
+lust stories
+lust stories 2
+four more shots please
+gandii baat
+gandi baat
+mastram
+charmsukh
+palang tod
+ullu app
+ullu originals
+kooku app
+primeplay
+altbalaji
+alt balaji
+hotshots app
+xprime
+mx player bold
+mirzapur sex scene
+sacred games sex scene
+the family man sex scene
+rasbhari
+her story erotic
+bir başkadır sevişme
+erşan kuneri
+ersan kuneri
+yeşilçam erotik
+yesilcam erotik
+yeşilçam seks filmleri
+seks furyası
+# --- Animation ------------------------------------------------------------------------------
+big mouth netflix
+human resources big mouth
+harley quinn sex scene
+paradise pd
+brickleberry
+sausage party foodtopia
+# --- Adult anime, manga and hentai titles --------------------------------------------------
+boku no pico
+redo of healer
+kaifuku jutsushi no yarinaoshi
+high school dxd
+highschool dxd
+prison school
+interspecies reviewers
+ishuzoku reviewers
+shimoneta
+highschool of the dead
+high school of the dead
+domestic girlfriend
+domestic na kanojo
+bible black
+la blue girl
+kiss x sis
+yosuga no sora
+eromanga sensei
+nana to kaoru
+monster musume
+to love ru
+to love-ru
+keijo anime
+valkyrie drive
+shinmai maou no testament
+testament of sister new devil
+ikkitousen
+queen's blade
+masou gakuen hxh
+peter grill to kenja no jikan
+peter grill and the philosopher's time
+kanojo x kanojo x kanojo
+mankitsu happening
+overflow anime
+overflow hentai
+ane naru mono
+euphoria hentai
+discipline zero
+resort boin
+mahou shoujo ai
+taimanin
+taimanin asagi
+koikatsu
+honey select
+illusion soft
+sankaku complex
+nhentai
+hanime
+hentaihaven
+hentai haven
+e-hentai
+exhentai
+fakku
+doujinshi hentai
+# --- Adult games -----------------------------------------------------------------------------
+summertime saga
+leisure suit larry
+huniepop
+huniepop 2
+subverse
+lust theory
+being a dik
+treasure of nadia
+lust epidemic
+milfy city
+college brawl
+house party sex
+cyberpunk sex scene
+baldur's gate 3 sex scene
+bg3 romance scene
+mass effect sex scene
+the witcher 3 sex scene
+nutaku
+f95zone
+f95 zone
+# --- Studios, sites, magazines -------------------------------------------------------------
+naughty america
+reality kings
+digital playground
+evil angel
+wicked pictures
+kink com
+kink.com
+teamskeet
+team skeet
+mofos
+fakehub
+faketaxi
+woodman casting
+woodmancasting
+backroom casting couch
+girlsdoporn
+girls do porn
+nubiles
+nubile films
+marc dorcel
+dorcel
+private com porn
+vivid entertainment
+hustler magazine
+hustler tv
+penthouse magazine
+penthouse pet
+playboy magazine
+playboy tv
+playboy bunny
+playboy playmate
+playmate of the month
+playmate of the year
+hugh hefner
+playboy mansion
+larry flynt
+bob guccione
+erome
+fapello
+coomer party
+coomer.party
+kemono party
+thothub
+leakedzone
+simpcity
+sxyprn
+porntrex
+hqporner
+txxx
+tnaflix
+beeg
+motherless com
+efukt
+pornpics
+imagefap
+literotica
+nifty archive
+asstr
+archive of our own explicit
+ao3 explicit
+wattpad smut
+smut fanfic
+smut book
+smut books
+spicy books
+spicy book
+booktok spicy
+spicy chapters
+spicy scenes
+monster romance
+monster smut
+dark romance smut
+a court of thorns and roses spicy
+acotar spicy
+# --- Replacements for titles that are everyday phrases on their own ------------------------
+9 songs 2004
+9 songs winterbottom
+the piano teacher haneke
+the night porter 1974
+wild orchid 1989
+blue velvet david lynch
+pink flamingos john waters
+kuroinu hentai
+public agent porn
+fake agent porn
+fake taxi porn
+tell me you love me hbo
+gen v amazon
+gen v series
+nip tuck series
+mrs fletcher hbo
+drawn together series
+the tudors series
+the tudors showtime
+the borgias series
+the borgias showtime
+# --- The same titles in other languages ----------------------------------------------------
+taht oyunları
+taht oyunlari
+ejderha hanedanı
+ejderha hanedani
+elli ton gri
+grinin elli tonu
+juego de tronos
+la casa del dragón
+cincuenta sombras de grey
+cincuenta sombras más oscuras
+cincuenta sombras liberadas
+cinquenta tons de cinza
+le trône de fer série
+cinquante nuances de grey
+il trono di spade
+cinquanta sfumature di grigio
+50 sfumature di grigio
+fifty shades of grey film
+pięćdziesiąt twarzy greya
+игра престолов
+дом дракона
+пятьдесят оттенков серого
+365 дней
+ゲーム・オブ・スローンズ
+フィフティ・シェイズ・オブ・グレイ
+权力的游戏
+五十度灰
+왕좌의 게임
+그레이의 50가지 그림자
+# --- Characters known only from these series --------------------------------------------------
+daenerys
+daenerys targaryen
+khaleesi
+targaryen
+targaryens
+lannister
+lannisters
+tyrion lannister
+cersei lannister
+jaime lannister
+arya stark
+sansa stark
+khal drogo
+ramsay bolton
+rhaenyra
+rhaenyra targaryen
+aemond
+aemond targaryen
+daemon targaryen
+alicent hightower
+house of dragon
+house of the dragons
+christian grey
+anastasia steele
+massimo torricelli
+laura biel
+# --- Joined forms of short titles, as hashtags
+fiftyshades
+50shades
+365dni

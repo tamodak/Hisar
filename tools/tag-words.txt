@@ -29,3 +29,10 @@ tgirls
 mtf
 mtftransition
 mtfhrt
+
+# Film titles that are ordinary words or places as plain text (tools/combinations.txt): as a tag,
+# the film.
+saltburn
+365days
+365days2
+365days3

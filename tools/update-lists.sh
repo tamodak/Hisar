@@ -71,6 +71,10 @@ echo "Blocked words (LDNOOBW en + tr) and local additions…"
     grep -vE '^[[:space:]]*(#|$)' tools/extra-words.txt || true
     # Lists by language and topic (tools/words/README.md).
     cat tools/words/*.txt
+    # Names and titles are written as hashtags too (#gameofthrones, #miakhalifa): add them joined,
+    # when long enough not to be part of another name ("danny d" -> "dannyd" is in "dannydevito").
+    grep -hvE '^[[:space:]]*(#|$)' tools/words/names.txt tools/words/titles.txt | grep ' ' \
+        | sed -E 's/[^[:alnum:]]+//g' | grep -E '^.{8,}$'
     # Combinations of ambiguous words ("trans man", "drag queen"), with Turkish endings.
     python3 tools/expand_combinations.py tools/combinations.txt
 } | normalize_words | drop_exceptions > "$OUT/words.all"
