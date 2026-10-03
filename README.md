@@ -184,3 +184,6 @@ It includes:
 | Adult-site list | [oisd](https://oisd.nl/), NSFW Small | free to use, credited here |
 | Ad, tracker and gambling lists | [StevenBlack/hosts](https://github.com/StevenBlack/hosts) | MIT |
 | Word lists (part) | [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) | CC BY 4.0 |
+| Word lists (part, reviewed by hand) | [dsojevic/profanity-list](https://github.com/dsojevic/profanity-list) | MIT |
+| Turkish words (part, reviewed by hand) | [ooguz/turkce-kufur-karaliste](https://github.com/ooguz/turkce-kufur-karaliste) | CC BY-SA 4.0 |
+| Collision checks (build tool only, not shipped) | [hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords) | CC BY-SA 4.0 |
