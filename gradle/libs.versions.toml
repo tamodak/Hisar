@@ -24,6 +24,9 @@ geckoview = "157.0.20260924084938"
 junit = "4.13.2"
 coroutines = "1.11.0"
 orgJson = "20250517"
+# Runs the image models on the phone's CPU (photo-filter's choice: 3x faster than the classic
+# interpreter through its CompiledModel API; works on Android 8).
+litert = "2.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -57,6 +60,7 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 # org.json is part of Android; JVM unit tests need the real implementation.
 org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
+litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
 [plugins]

@@ -21,3 +21,7 @@ local.properties
 /dist
 tools/experiments/coverage/data/
 __pycache__/
+
+# Image models (about 300 MB): tools/vision/install_models.sh puts them here.
+app/src/main/assets/vision/*.tflite
+app/src/main/assets/vision/clip*_text_embeddings.bin

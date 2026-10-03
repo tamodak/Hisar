@@ -37,9 +37,10 @@
    * - scan: judge the smallest readable 'block' (paragraph, heading, link, list entry) — 'item'
    *   (the item, else the parent element) left headlines visible on news sites;
    * - collapse: a card left with almost no text once its title is hidden (a video's thumbnail)
-   *   goes too.
+   *   goes too;
+   * - images: pictures judged by the app's classifier (off measures the text filter alone).
    */
-  var config = Object.assign({ filter: true, hide: 'inline', empty: false, shadow: 'sweep', scan: 'block', collapse: true }, HISAR_DATA.config || {});
+  var config = Object.assign({ filter: true, hide: 'inline', empty: false, shadow: 'sweep', scan: 'block', collapse: true, images: true }, HISAR_DATA.config || {});
   var measuring = HISAR_DATA.measure === true;
   var metrics = { scanMs: 0, checks: 0, hidden: 0, hiddenChars: 0, errors: 0, rejections: 0, roots: 0, errorSamples: [], hiddenSamples: [] };
 
@@ -105,6 +106,12 @@
     if (!root || observedRoots.has(root)) return;
     metrics.roots++;
     roots.push(root);
+    // The page's styles don't reach into shadow roots: inline pictures there wait the same way.
+    if (config.images) {
+      var style = document.createElement('style');
+      style.textContent = HISAR_DATA.inlineImageCss || '';
+      root.appendChild(style);
+    }
     observe(root);
     queue(root);
   }
@@ -381,12 +388,14 @@
     if (node.nodeType !== 1 && node.nodeType !== 11) return;
     if (node.nodeType === 1) {
       if (node.tagName === 'HISAR-HIDDEN') { onMarker(node); return; }
+      if (node.tagName === 'IMG') onImage(node);
       if (node.tagName.indexOf('-') > 0) adoptShadowRoot(node);
     }
     var walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
     for (var n = walker.nextNode(); n; n = walker.nextNode()) {
       if (n.nodeType === 3) { if (n.data.trim().length > 0) check(n); continue; }
       if (n.tagName === 'HISAR-HIDDEN') onMarker(n);
+      else if (n.tagName === 'IMG') onImage(n);
       else if (n.tagName.indexOf('-') > 0) adoptShadowRoot(n);
     }
   }
@@ -418,10 +427,222 @@
         else m.addedNodes.forEach(queue);
       });
     }).observe(root, { childList: true, subtree: true, characterData: true });
+    // A picture changing its address (sites reuse their elements as lists scroll) is judged again
+    // before it is drawn: observers run before the next paint.
+    if (config.images) {
+      new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) { if (m.target.tagName === 'IMG') onImage(m.target); });
+      }).observe(root, { attributes: true, subtree: true, attributeFilter: ['src', 'srcset'] });
+    }
   }
   if (config.filter) {
     observe(document);
     document.addEventListener('DOMContentLoaded', function () { queue(document.body || document.documentElement); });
+  }
+
+  // --- Pictures ------------------------------------------------------------------------------------
+
+  /*
+   * Pictures loaded from the network are judged before they are drawn (image-filter.js): a picture
+   * that is not safe arrives as a grey placeholder of the same size, and this frame hears of it.
+   * - A video's thumbnail takes its video's card out of the list, as a blocked word in its title
+   *   would, when the classifier is sure of it.
+   * - Any other picture, and a thumbnail the classifier only covered to be safe, gets its outline
+   *   mask when the app has made it: the people in it covered, the rest of the picture shown.
+   * Pictures a page holds itself (data: and blob: addresses, such as Google Images' first results)
+   * never touch the network: they stay invisible (a style registered with this script) until they
+   * have been judged here.
+   */
+  /** Covered pictures' addresses, each with whether the classifier was sure. */
+  var coveredImages = new Map();
+  /** Cards hidden for their thumbnail, which come back if the site reuses them for another video. */
+  var imageHidden = new WeakSet();
+  /** The address this script gave a picture (placeholder or outline mask), which needs no judging. */
+  var ownSource = new WeakMap();
+  /** Outline masks asked for, by the picture's address or inline key. */
+  var outlines = new Map();
+  var IMAGE_OK = 'data-hisar-image-ok';
+  /** Addresses of a video page, on the sites people watch videos on and in general. */
+  var VIDEO_LINK = /(\/watch\b|\/shorts\/|youtu\.be\/|\/embed\/|\/videos?\/|vimeo\.com\/\d|\/reels?\/|dailymotion\.com\/video|\/clip\/|[?&]v=)/i;
+  /** Thumbnails' own addresses on the largest video sites. */
+  var THUMBNAIL = /(ytimg\.com\/(vi|vi_webp|an_webp|sb)\/|i\.vimeocdn\.com\/video\/|dmcdn\.net\/|tiktokcdn[^/]*\/.*(video|tos-)|rumble\.com\/.*thumb|img\.youtube\.com\/vi\/)/i;
+  /** A video's length printed on its thumbnail (3:45, 1:02:10). */
+  var DURATION = /^\s*\d{1,2}(:\d{2}){1,2}\s*$/;
+  /** Inline pictures shorter than this (characters of their address) are icons and dots. */
+  var MIN_INLINE = 1600;
+
+  if (config.filter && config.images) {
+    browser.runtime.onMessage.addListener(function (message) {
+      if (message && message.type === 'imageCovered') {
+        coveredImages.set(message.url, message.sure === true);
+        // After the page has placed it: the grey picture is what is drawn meanwhile.
+        requestAnimationFrame(function () { showing(message.url).forEach(function (el) { onCovered(el, message.url, message.sure === true); }); });
+      }
+    });
+  }
+
+  function sourceOf(el) {
+    return el.currentSrc || el.getAttribute('src') || '';
+  }
+
+  /** Elements in this frame showing the picture at [url]. */
+  function showing(url) {
+    var found = [];
+    roots.forEach(function (root) {
+      try {
+        root.querySelectorAll('img, video[poster], [style*="url("]').forEach(function (el) {
+          if (el.tagName === 'IMG') {
+            if (el.currentSrc === url || el.src === url || (el.getAttribute('srcset') || '').indexOf(url) >= 0) found.push(el);
+          } else if (el.tagName === 'VIDEO') {
+            if (el.poster === url) found.push(el);
+          } else if ((el.style.backgroundImage || '').indexOf(url) >= 0) {
+            found.push(el);
+          }
+        });
+      } catch (e) {}
+    });
+    return found;
+  }
+
+  /** An <img> appeared or changed its address. */
+  function onImage(img) {
+    if (!config.images) return;
+    var src = img.getAttribute('src') || '';
+    if (ownSource.get(img) === src) { img.setAttribute(IMAGE_OK, ''); return; }
+    // A card hidden for its old thumbnail comes back when the site shows another video in it.
+    for (var n = img.parentElement; n; n = n.parentElement) {
+      if (!imageHidden.has(n)) continue;
+      if (!coveredImages.has(sourceOf(img))) unhideCard(n);
+      break;
+    }
+    if (/^(data:image\/(?!svg)|blob:)/i.test(src)) {
+      img.removeAttribute(IMAGE_OK);
+      judgeInline(img, src);
+      return;
+    }
+    var url = img.currentSrc || img.src;
+    if (url && coveredImages.has(url)) onCovered(img, url, coveredImages.get(url));
+  }
+
+  /** A covered picture on this page: its video's card goes, or its outline mask is asked for. */
+  function onCovered(el, key, sure) {
+    if (inHidden(el)) return;
+    var card = sure ? videoCard(el, key) : null;
+    if (card) { hideCard(card); return; }
+    if (!outlines.has(key)) outlines.set(key, browser.runtime.sendMessage({ type: 'outlineImage', url: key }).catch(function () { return null; }));
+    outlines.get(key).then(function (masked) {
+      if (!masked || inHidden(el)) return;
+      if (el.tagName === 'IMG') {
+        // Sources of a <picture> would outrank the new address.
+        if (el.parentElement && el.parentElement.tagName === 'PICTURE') {
+          el.parentElement.querySelectorAll('source').forEach(function (source) { source.removeAttribute('srcset'); });
+        }
+        ownSource.set(el, masked);
+        el.removeAttribute('srcset');
+        el.setAttribute('src', masked);
+      } else if (el.tagName === 'VIDEO') {
+        el.poster = masked;
+      } else {
+        el.style.setProperty('background-image', 'url("' + masked + '")', 'important');
+      }
+    });
+  }
+
+  /**
+   * The card of the video whose thumbnail [el] is, or null when it is not a video's: the largest
+   * element around it that holds no other video, as long as it reads as one item.
+   */
+  function videoCard(el, url) {
+    var link = el.closest('a[href]');
+    var video = THUMBNAIL.test(url) || el.tagName === 'VIDEO' || (link && VIDEO_LINK.test(link.href));
+    var start = link || el;
+    var mine = videoKeys(start);
+    var card = start;
+    for (var p = start.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+      if ((p.textContent || '').length > MAX_ITEM_TEXT) break;
+      var keys = videoKeys(p);
+      var other = false;
+      keys.forEach(function (k) { if (!mine.has(k)) other = true; });
+      if (other || (!keys.size && otherPicture(p, card))) break;
+      card = p;
+    }
+    if (!video) video = hasDuration(card);
+    return video && card !== document.body ? card : null;
+  }
+
+  /** The videos an element links to, by address without its tracking parameters. */
+  function videoKeys(el) {
+    var keys = new Set();
+    var links = el.matches('a[href]') ? [el] : [];
+    el.querySelectorAll('a[href]').forEach(function (a) { links.push(a); });
+    links.forEach(function (a) {
+      if (!VIDEO_LINK.test(a.href)) return;
+      var m = /[?&]v=([\w-]+)/.exec(a.href);
+      keys.add(m ? m[1] : a.href.split(/[?#]/)[0]);
+    });
+    return keys;
+  }
+
+  /** Whether [el] shows another sizeable picture than those in [card]. */
+  function otherPicture(el, card) {
+    var imgs = el.querySelectorAll('img');
+    for (var i = 0; i < imgs.length; i++) {
+      if (card.contains(imgs[i])) continue;
+      if (imgs[i].width >= 64 && imgs[i].height >= 64) return true;
+    }
+    return false;
+  }
+
+  function hasDuration(card) {
+    var walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    for (var t = walker.nextNode(); t; t = walker.nextNode()) if (DURATION.test(t.data)) return true;
+    return false;
+  }
+
+  function hideCard(card) {
+    imageHidden.add(card);
+    hide(card);
+  }
+
+  function unhideCard(card) {
+    imageHidden.delete(card);
+    hidden.delete(card);
+    card.removeAttribute('data-hisar-hidden');
+    card.style.removeProperty('display');
+    checked.delete(card);
+    queue(card);
+  }
+
+  /** A picture the page holds itself: judged by the app, shown only once it is safe. */
+  function judgeInline(img, src) {
+    if (src.length < MIN_INLINE && src.indexOf('data:') === 0) { img.setAttribute(IMAGE_OK, ''); return; }
+    bytesOf(src).then(function (bytes) {
+      return browser.runtime.sendMessage({ type: 'judgeImage', bytes: bytes });
+    }).then(function (verdict) {
+      if (img.getAttribute('src') !== src) return;
+      if (verdict && verdict.cover) {
+        ownSource.set(img, verdict.placeholder);
+        img.removeAttribute('srcset');
+        img.setAttribute('src', verdict.placeholder);
+        if (verdict.key) onCovered(img, verdict.key, verdict.sure === true);
+      } else if (verdict) {
+        img.setAttribute(IMAGE_OK, '');
+      }
+    }, function () {});
+  }
+
+  function bytesOf(src) {
+    if (src.indexOf('blob:') === 0) return fetch(src).then(function (r) { return r.arrayBuffer(); });
+    var comma = src.indexOf(',');
+    var meta = src.slice(0, comma);
+    var data = src.slice(comma + 1);
+    if (/;base64$/i.test(meta)) {
+      var text = atob(data.replace(/\s+/g, ''));
+      var bytes = new Uint8Array(text.length);
+      for (var i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+      return Promise.resolve(bytes.buffer);
+    }
+    return Promise.resolve(new TextEncoder().encode(decodeURIComponent(data)).buffer);
   }
 
   // --- Measuring (debug builds, tools/experiments) ----------------------------------------------------

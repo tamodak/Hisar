@@ -1,6 +1,7 @@
 package org.tamodak.hisar.web
 
 import android.content.Context
+import android.util.Base64
 import android.util.Log
 import androidx.annotation.MainThread
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,6 +24,7 @@ import org.tamodak.hisar.data.repository.CookieStore
 import org.tamodak.hisar.data.repository.FilterRepository
 import org.tamodak.hisar.di.ApplicationScope
 import org.tamodak.hisar.filter.Decision
+import org.tamodak.hisar.vision.ImageFilter
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,6 +56,7 @@ interface EngineEvents {
 class GeckoEngine @Inject constructor(
     @ApplicationContext private val context: Context,
     private val filters: FilterRepository,
+    private val images: ImageFilter,
     @ApplicationScope private val scope: CoroutineScope,
 ) : CookieStore {
 
@@ -71,6 +74,8 @@ class GeckoEngine @Inject constructor(
     }
 
     private val extension = CompletableDeferred<WebExtension>()
+    /** Completed when the extension has its lists and its page script in place. */
+    private val filterReady = CompletableDeferred<Unit>()
     private var background: WebExtension.Port? = null
     private var simpleCss: String? = null
     /** Strategy switches being compared (debug builds only, tools/experiments); null normally. */
@@ -90,6 +95,19 @@ class GeckoEngine @Inject constructor(
             // Without its filter the browser must not browse: every request waits on the lists.
             Log.e(TAG, "The filter extension failed to install", error)
         })
+    }
+
+    /**
+     * Runs [load] once the filter is in place, at once after the first time. A page loaded before
+     * that, right after a cold start, would be shown without the page and picture filters.
+     */
+    @MainThread
+    fun whenFilterReady(load: () -> Unit) {
+        if (filterReady.isCompleted) load()
+        else scope.launch(Dispatchers.Main) {
+            filterReady.await()
+            load()
+        }
     }
 
     /** Routes a tab's content-script messages (commands, reports) to [delegate]. */
@@ -138,6 +156,16 @@ class GeckoEngine @Inject constructor(
                 }
                 port.postMessage(verdict.put("type", "reply").put("id", message.optInt("id")))
             }
+            // Pictures, held by the extension until judged (image-filter.js).
+            "classifyImage" -> scope.launch {
+                val verdict = images.judge(Base64.decode(message.optString("image"), Base64.DEFAULT))
+                reply(port, message, JSONObject().put("cover", verdict.cover).put("sure", verdict.sure))
+            }
+            "outlineImage" -> scope.launch {
+                val masked = images.outline(Base64.decode(message.optString("image"), Base64.DEFAULT))
+                reply(port, message, JSONObject().put("image", masked?.let { Base64.encodeToString(it, Base64.NO_WRAP) } ?: JSONObject.NULL))
+            }
+            "ready" -> filterReady.complete(Unit)
             "blocked" -> events?.onRequestBlocked(message.optInt("tabId", -1))
             "adBlocked" -> events?.onAdBlocked(message.optInt("tabId", -1))
             "pageBlocked" -> events?.onPageBlocked(message.optInt("tabId", -1))
@@ -145,6 +173,11 @@ class GeckoEngine @Inject constructor(
             "reply" -> pending.remove(message.optInt("id"))?.complete(message)
             "metrics" -> logMetrics(message)
         }
+    }
+
+    /** Answers the background script's [question]; the port takes messages on the main thread. */
+    private suspend fun reply(port: WebExtension.Port, question: JSONObject, answer: JSONObject) = withContext(Dispatchers.Main) {
+        port.postMessage(answer.put("type", "reply").put("id", question.optInt("id")))
     }
 
     // --- Comparing strategies (debug builds only) -------------------------------------------------

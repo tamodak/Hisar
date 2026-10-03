@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Hisar filter",
-  "version": "1.5",
+  "version": "1.6",
   "description": "Hisar's request, response and page filtering, built into the browser.",
   "browser_specific_settings": {
     "gecko": {
@@ -14,6 +14,7 @@
       "guard.js",
       "html-filter.js",
       "json-filter.js",
+      "image-filter.js",
       "background.js"
     ],
     "persistent": true

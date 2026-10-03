@@ -77,7 +77,7 @@ class TabSession(
     /** True when the page is scrolled down, for pull-to-refresh. */
     val isScrolled: Boolean get() = scrollY > 0
 
-    fun load(url: String) = session.loadUri(url)
+    fun load(url: String) = engine.whenFilterReady { session.loadUri(url) }
     fun reload() = session.reload()
     fun stop() = session.stop()
     fun goBack() = session.goBack()

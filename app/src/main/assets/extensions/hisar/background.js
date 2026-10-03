@@ -9,6 +9,7 @@
  * - Everything else is judged here (guard.js): blocked domains, blocked words in search
  *   parameters and request bodies, searches without strict SafeSearch.
  * - Pages' HTML has text with blocked words taken out as it streams in (html-filter.js).
+ * - Pictures are held until the app's classifier has judged them (image-filter.js).
  * - The content script (content.js), registered here with the app's word lists, handles what
  *   happens on the page itself.
  *
@@ -30,7 +31,13 @@ var simpleCss = null;
 var experiment = null;
 function option(name, fallback) { return experiment && experiment[name] !== undefined ? experiment[name] : fallback; }
 var resolveReady;
+/**
+ * Settles once the lists are in and the content script is registered: a page loaded before that
+ * would run without the page filter.
+ */
 var ready = new Promise(function (resolve) { resolveReady = resolve; });
+var isReady = false;
+ready.then(function () { isReady = true; });
 
 // --- The app ---------------------------------------------------------------------------------
 
@@ -56,8 +63,8 @@ function connect() {
   port.postMessage({ type: 'hello' });
 }
 
-/** Asks the app something and waits for its reply. Rejects if the app does not answer. */
-function ask(message) {
+/** Asks the app something and waits for its reply. Rejects if the app does not answer in time. */
+function ask(message, timeoutMillis) {
   return new Promise(function (resolve, reject) {
     if (!app) { reject(new Error('no app')); return; }
     var id = nextId++;
@@ -66,7 +73,7 @@ function ask(message) {
     app.postMessage(message);
     setTimeout(function () {
       if (pending.delete(id)) reject(new Error('timeout'));
-    }, ASK_TIMEOUT_MILLIS);
+    }, timeoutMillis || ASK_TIMEOUT_MILLIS);
   });
 }
 
@@ -84,7 +91,11 @@ function onAppMessage(message) {
         guard = HisarGuard.create({ ads: domains.ads, harmful: domains.harmful, typed: matchers.typed });
         dataFilter = HisarJsonFilter.create(matchers);
         return registerContentScripts();
-      }).then(function () { resolveReady(); });
+      }).then(function () {
+        resolveReady();
+        // The app holds pages back until now.
+        tell({ type: 'ready' });
+      });
       break;
     case 'simpleMode':
       simpleCss = message.css || null;
@@ -141,7 +152,7 @@ var registered = null;
 /** The content script, with the word lists and simple mode's style ready at document start. */
 function registerContentScripts() {
   var previous = registered;
-  var data = 'var HISAR_DATA = ' + JSON.stringify({ lists: lists, simpleCss: simpleCss, config: experiment, measure: experiment !== null }) + ';';
+  var data = 'var HISAR_DATA = ' + JSON.stringify({ lists: lists, simpleCss: simpleCss, config: experiment, measure: experiment !== null, inlineImageCss: HisarImageFilter.INLINE_CSS }) + ';';
   registerShadowHook(option('shadow', 'sweep') === 'main');
   return browser.contentScripts.register({
     matches: ['<all_urls>'],
@@ -149,9 +160,13 @@ function registerContentScripts() {
     matchAboutBlank: true,
     runAt: 'document_start',
     js: [{ code: data }, { file: 'matcher.js' }, { file: 'content.js' }],
+    css: option('images', true) ? [{ code: HisarImageFilter.INLINE_CSS }] : [],
   }).then(function (script) {
     registered = script;
     if (previous) previous.unregister();
+  }, function (e) {
+    tell({ type: 'metrics', kind: 'error', message: 'content script: ' + e.message });
+    throw e;
   });
 }
 
@@ -173,13 +188,18 @@ browser.runtime.onMessage.addListener(function (message, sender) {
   // The content script learns which engine tab it is in, and tells the app (which knows its own
   // tabs only by their sessions).
   if (message && message.type === 'whoami') return Promise.resolve({ tabId: sender.tab ? sender.tab.id : -1 });
+  // A picture the page holds itself (data: or blob:), and the outline mask of a covered one.
+  if (message && message.type === 'judgeImage') {
+    return ready.then(function () { return images.judgeBytes(message.bytes, sender.tab ? sender.tab.id : -1); });
+  }
+  if (message && message.type === 'outlineImage') return images.outline(message.url);
   return undefined;
 });
 
 // --- Requests --------------------------------------------------------------------------------
 
 function onBeforeRequest(details) {
-  if (!guard) return ready.then(function () { return onBeforeRequest(details); });
+  if (!isReady) return ready.then(function () { return onBeforeRequest(details); });
   if (!/^https?:/.test(details.url)) return {};
 
   if (details.type === 'main_frame') {
@@ -378,6 +398,31 @@ function join(parts, length) {
 }
 
 
+// --- Pictures ------------------------------------------------------------------------------------
+
+var images = HisarImageFilter.create(ask, tell, function (tabId, url, sure) {
+  // Every frame of the tab hears of it; the one showing the picture acts (content.js).
+  browser.tabs.sendMessage(tabId, { type: 'imageCovered', url: url, sure: sure }).catch(function () {});
+}, function () { return experiment !== null; });
+
+/**
+ * Pictures, wherever they are loaded from: <img>, CSS backgrounds, posters, <picture> sources,
+ * and pictures pages or their service workers fetch.
+ */
+function onImageHeaders(details) {
+  // A picture revalidated from the cache (304) shows the cached bytes: judged like any other.
+  var ok = (details.statusCode >= 200 && details.statusCode < 300) || details.statusCode === 304;
+  if (!option('images', true) || !ok) return {};
+  var type = header(details.responseHeaders || [], 'content-type');
+  var value = type ? type.value : '';
+  // Fetched data is judged only when it is a picture.
+  if (details.type !== 'image' && details.type !== 'imageset' && !/^\s*image\//i.test(value)) return {};
+  if (!isReady) return ready.then(function () { return onImageHeaders(details); });
+  return images.onHeaders(details, value);
+}
+
+browser.webRequest.onHeadersReceived.addListener(onImageHeaders, { urls: ['<all_urls>'], types: ['image', 'imageset', 'xmlhttprequest', 'object', 'other'] }, ['blocking', 'responseHeaders']);
+
 // --- YouTube Restricted Mode (off) -------------------------------------------------------------
 
 /*
@@ -474,3 +519,4 @@ var SNIFF_BYTES = 1024;
 var MAX_DATA = 16 * 1024 * 1024;
 
 connect();
+

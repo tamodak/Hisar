@@ -51,11 +51,15 @@ STRATEGIES = {
     "block-shadow-main": {"html": False, "empty": False, "scan": "block", "shadow": "main"},
     "block-shadow-none": {"html": False, "empty": False, "scan": "block", "shadow": "none"},
     "dns": {"dns": "cleanbrowsing"},
+    # Pictures not judged at all, to measure what the picture filter costs.
+    "noimages": {"images": False},
 }
 
 SITES = {
     # The hard cases (testpage/), served from this machine: deterministic, unlike real feeds.
     "cases": "http://localhost:8765/index.html",
+    # Picture filter cases (testpage/images.html): covered, shown, video cards, inline, backgrounds.
+    "images": "http://localhost:8765/images.html",
     "reddit": "https://www.reddit.com/",
     "askreddit": "https://www.reddit.com/r/AskReddit/",
     "youtube": "https://m.youtube.com/",
@@ -88,10 +92,10 @@ def run_one(device, out, strategy, site, url, attempt):
     )
     adb(device, "shell", command)
     started = time.time()
-    page, html = None, []
+    page, html, images = None, [], []
     while time.time() - started < TIMEOUT_SECONDS:
         time.sleep(3)
-        page, html = None, []
+        page, html, images = None, [], []
         for line in adb(device, "logcat", "-d", "-s", "Hisar.Metrics:I").splitlines():
             if "{" not in line:
                 continue
@@ -101,6 +105,8 @@ def run_one(device, out, strategy, site, url, attempt):
                 continue
             if m.get("kind") in ("html", "data"):
                 html.append(m)
+            elif m.get("kind") == "image":
+                images.append(m)
             elif m.get("type") == "metrics" and m.get("kind") is None:
                 page = m
         if page:
@@ -115,6 +121,12 @@ def run_one(device, out, strategy, site, url, attempt):
         result["htmlMs"] = sum(h.get("ms", 0) for h in html)
         result["htmlRemoved"] = sum(h.get("removed", 0) for h in html)
         result["dataWhole"] = sum(1 for h in html if h.get("whole"))
+        # Pictures judged: how many, how many covered, and how long each waited for its verdict.
+        waits = sorted(i.get("ms", 0) for i in images)
+        result["images"] = len(images)
+        result["imagesCovered"] = sum(1 for i in images if i.get("cover"))
+        result["imageWaitMedianMs"] = waits[len(waits) // 2] if waits else 0
+        result["imageWaitMaxMs"] = waits[-1] if waits else 0
     else:
         result["missing"] = True
     return result
@@ -124,13 +136,13 @@ def table(results):
     by_site = {}
     for r in results:
         by_site.setdefault(r["site"], []).append(r)
-    columns = ["strategy", "leaks", "hidden", "hiddenChars", "errors", "scanMs", "htmlMs", "htmlRemoved", "roots", "loadMs"]
+    columns = ["strategy", "leaks", "hidden", "hiddenChars", "errors", "scanMs", "htmlMs", "htmlRemoved", "roots", "loadMs", "images", "imagesCovered", "imageWaitMedianMs", "imageWaitMaxMs"]
     for site, rows in by_site.items():
         print(f"\n## {site}")
         print(" | ".join(columns))
         for r in rows:
             print(" | ".join("n/a" if r.get("missing") else str(r.get(c, "")) for c in columns))
-            if site == "cases" and r.get("probe"):
+            if site in ("cases", "images") and r.get("probe"):
                 print("    cases: " + r["probe"])
             if r.get("errorSamples"):
                 print("    errors: " + " / ".join(r["errorSamples"]))
@@ -156,7 +168,7 @@ def main():
     parser.add_argument("--repeat", type=int, default=1)
     args = parser.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    if "cases" in args.sites.split(","):
+    if {"cases", "images"} & set(args.sites.split(",")):
         serve_test_page(args.device)
     results = []
     with open(os.path.join(args.out, "results.jsonl"), "a") as log:

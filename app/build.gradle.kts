@@ -41,6 +41,10 @@ android {
             isUniversalApk = false
         }
     }
+    androidResources {
+        // The image models are memory-mapped straight from the APK, which needs them uncompressed.
+        noCompress += "tflite"
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -88,6 +92,12 @@ dependencies {
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.geckoview)
+    implementation(libs.litert) {
+        // Google Play's model-download service for LiteRT's "AI Pack" feature, which Hisar does not
+        // use (its models are in the APK). It would bring in proprietary Play services and
+        // background-work permissions.
+        exclude(group = "com.google.android.play", module = "ai-delivery")
+    }
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.org.json)
