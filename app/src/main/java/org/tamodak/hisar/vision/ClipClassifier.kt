@@ -1,11 +1,11 @@
 package org.tamodak.hisar.vision
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RectF
 import com.google.ai.edge.litert.Environment
 import java.io.Closeable
+import java.io.File
 import kotlin.math.exp
 
 /**
@@ -16,7 +16,7 @@ import kotlin.math.exp
  *
  * The text embeddings are computed once, offline, by tools/make_text_embeddings.py.
  */
-internal class ClipClassifier(context: Context, environment: Environment) : Closeable {
+internal class ClipClassifier(models: File, environment: Environment) : Closeable {
 
     /** Probabilities for one region. */
     class Look(
@@ -31,8 +31,8 @@ internal class ClipClassifier(context: Context, environment: Environment) : Clos
     )
 
     // The int8 weights run as fast in fp32 as in fp16, and slightly more accurately.
-    private val model = CpuModel(context, environment, "vision/clip_vit_b32_int8.tflite")
-    private val text = context.loadVectors("vision/clip_text_embeddings.bin").let { floats ->
+    private val model = CpuModel(models, environment, "clip_vit_b32_int8.tflite")
+    private val text = models.loadVectors("clip_text_embeddings.bin").let { floats ->
         val dimensions = floats.size / TEXT_CLASSES
         Array(TEXT_CLASSES) { floats.copyOfRange(it * dimensions, (it + 1) * dimensions) }
     }

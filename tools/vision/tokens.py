@@ -3,7 +3,7 @@ import json, sys, numpy as np, torch, open_clip
 from PIL import Image
 torch.set_num_threads(6)
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 8
-order = json.load(open('order.json'))
+import os; order = json.load(open(os.environ.get('ORDER', 'order.json')))
 model, _, pre = open_clip.create_model_and_transforms('ViT-B-32', pretrained='openai'); model.eval()
 v = model.visual
 def tokens(x):
@@ -19,4 +19,4 @@ for flip in [0, 1]:
             ims = [Image.open(f'img/{k}.jpg') for k in order[i:i + 64]]
             if flip: ims = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in ims]
             out.append(tokens(torch.stack([pre(im) for im in ims])).half().numpy())
-    np.save(f'emb/tokens{N}_flip{flip}.npy', np.concatenate(out)); print('flip', flip, flush=True)
+    np.save(f'emb/{os.environ.get("PREFIX", "")}tokens{N}_flip{flip}.npy', np.concatenate(out)); print('flip', flip, flush=True)

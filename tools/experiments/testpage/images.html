@@ -23,6 +23,7 @@
   #hisar-test-results, which the harness reads.
   Pictures: images/manifest.json (Open Images, CC BY 2.0; see images/SOURCES.md).
 -->
+<pre id="hisar-timing"></pre>
 <h3>Pictures</h3>
 <div class="grid" id="pictures"></div>
 <h3>Video cards</h3>
@@ -105,7 +106,11 @@
       if (ok) pass++; else fail++;
       lines.push((ok ? 'ok   ' : 'FAIL ') + el.dataset.case + ': expected ' + el.dataset.expect + ', got ' + got);
     }
-    document.getElementById('hisar-test-results').textContent = pass + ' passed, ' + fail + ' failed\n' + lines.join('\n');
+    // How long pictures took to arrive (held while judged), from the browser's resource timing.
+    const times = performance.getEntriesByType('resource').filter((e) => /\/images\/[^/]+\.jpg/.test(e.name)).map((e) => e.responseEnd - e.startTime).sort((a, b) => a - b);
+    const timing = times.length ? 'pictures: ' + times.length + ', median ' + Math.round(times[times.length >> 1]) + ' ms, max ' + Math.round(times[times.length - 1]) + ' ms\n' : '';
+    document.getElementById('hisar-timing').textContent = timing + pass + ' passed, ' + fail + ' failed';
+    document.getElementById('hisar-test-results').textContent = timing + pass + ' passed, ' + fail + ' failed\n' + lines.join('\n');
   }
 })();
 </script>

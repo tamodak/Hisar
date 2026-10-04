@@ -1,6 +1,5 @@
 package org.tamodak.hisar.vision
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -23,11 +22,9 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Memory-maps a model stored uncompressed in the APK's assets. */
-internal fun Context.loadModel(asset: String): ByteBuffer = assets.openFd(asset).use { file ->
-    FileInputStream(file.fileDescriptor).channel.use {
-        it.map(FileChannel.MapMode.READ_ONLY, file.startOffset, file.declaredLength)
-    }
+/** Memory-maps the model [name] in the directory of downloaded models. */
+internal fun File.loadModel(name: String): ByteBuffer = FileInputStream(File(this, name)).channel.use {
+    it.map(FileChannel.MapMode.READ_ONLY, 0, it.size())
 }
 
 /**
@@ -48,15 +45,14 @@ internal fun cpuInterpreter(model: ByteBuffer) = Interpreter(
  * answers in fp16 should ask for it.
  */
 internal class CpuModel(
-    context: Context,
+    models: File,
     environment: Environment,
-    asset: String,
+    name: String,
     fp16: Boolean = false,
 ) : Closeable {
 
     private val model = CompiledModel.create(
-        context.assets,
-        asset,
+        File(models, name).path,
         CompiledModel.Options(Accelerator.CPU).apply {
             cpuOptions = CompiledModel.CpuOptions(
                 CPU_THREADS,
@@ -112,8 +108,8 @@ private val HALF_PRECISION: Boolean by lazy {
     }.getOrDefault(false)
 }
 
-/** Reads an asset of little-endian float32 values, such as precomputed text embeddings. */
-internal fun Context.loadVectors(asset: String): FloatArray = assets.open(asset).use { stream ->
+/** Reads a file of little-endian float32 values, such as precomputed text embeddings. */
+internal fun File.loadVectors(name: String): FloatArray = File(this, name).inputStream().use { stream ->
     val floats = ByteBuffer.wrap(stream.readBytes()).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
     FloatArray(floats.remaining()).also { floats.get(it) }
 }

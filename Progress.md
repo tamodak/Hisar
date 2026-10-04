@@ -254,6 +254,29 @@ better".
 **Measured:** topic results 611 → 755 of 921 removed; innocent 18 of 1244, all about the blocked
 series except Watergate's "Deep Throat" (already blocked as the film's title).
 
+## 13. The picture filter
+
+**Asked for:** a picture filter like photo-filter: every picture masked before it is drawn when it
+shows a woman's bare body beyond face and hands, and videos whose thumbnail shows one taken out
+like the word filter does. The user chose a grey box from a fast classifier first and the outline
+mask later, a classifier that looks for bare female body parts rather than women, women only.
+For the MVP: models downloaded inside the app on first start (forced, like games), Play-sized APK.
+
+**Built:**
+- `image-filter.js`: every picture held back whole (filterResponseData, as Wingman Jr. does),
+  judged by the app, passed or replaced by a grey picture of the same size; `data:`/`blob:`
+  pictures hidden until judged. `content.js`: sure thumbnails remove their video's card, other
+  covered pictures get the outline mask.
+- `vision/`: BodyClassifier (CLIP ViT-B/32 + logistic head), OutlineMasker (photo-filter's
+  pipeline without men's bands), ImageFilter, ModelRepository (DownloadManager, SHA-256 checks)
+  and a first-start setup screen.
+- 5,711 Open Images pictures labelled by hand (`tools/vision/labels.json`); backbones compared
+  (README, picture filter measurements).
+- Pages wait for the filter after a cold start (the first page used to load without the page script).
+
+**Measured:** S20 FE release build, 32 pictures: median wait 0.2 s, max 0.4 s. Play download
+95.5 MB (arm64); models 227 MB downloaded on first start.
+
 ---
 
 ## Where things stand

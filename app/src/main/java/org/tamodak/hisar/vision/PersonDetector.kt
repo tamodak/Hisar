@@ -1,10 +1,10 @@
 package org.tamodak.hisar.vision
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RectF
 import java.io.Closeable
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.ceil
@@ -19,9 +19,9 @@ internal class Person(val box: RectF, val score: Float)
  * Finds people with EfficientDet-Lite2, trained on COCO. The model includes its own non-max
  * suppression and returns at most 25 objects.
  */
-internal class PersonDetector(context: Context) : Closeable {
+internal class PersonDetector(models: File) : Closeable {
 
-    private val interpreter = cpuInterpreter(context.loadModel("vision/efficientdet_lite2.tflite"))
+    private val interpreter = cpuInterpreter(models.loadModel("efficientdet_lite2.tflite"))
     private val size = interpreter.getInputTensor(0).shape()[1]
     private val maxObjects = interpreter.getOutputTensor(0).shape()[1]
     private val input = ByteBuffer.allocateDirect(size * size * 3).order(ByteOrder.nativeOrder())

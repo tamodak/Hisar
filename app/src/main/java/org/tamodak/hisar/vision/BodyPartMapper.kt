@@ -1,9 +1,9 @@
 package org.tamodak.hisar.vision
 
-import android.content.Context
 import android.graphics.Bitmap
 import com.google.ai.edge.litert.Environment
 import java.io.Closeable
+import java.io.File
 import kotlin.math.exp
 import kotlin.math.max
 
@@ -16,7 +16,7 @@ import kotlin.math.max
  * hands or feet for them, so the maps say where, not whose: [ModestyFilter] asks CLIP that.
  * The prompts' text embeddings are computed offline by tools/make_clipseg_embeddings.py.
  */
-internal class BodyPartMapper(context: Context, environment: Environment) : Closeable {
+internal class BodyPartMapper(models: File, environment: Environment) : Closeable {
 
     /** Probabilities (0..1) per grid cell. */
     class Maps(
@@ -30,9 +30,9 @@ internal class BodyPartMapper(context: Context, environment: Environment) : Clos
     // little closer to the original, but LiteRT expands such weights to floats when loading, which
     // took 0.55 GB more memory; the covers on 82 test pictures came out the same either way. Both
     // run in fp16 where the phone can, which more than halved the time on a Galaxy S20 FE.
-    private val vision = CpuModel(context, environment, "vision/clipseg_vision.tflite", fp16 = true)
-    private val decoder = CpuModel(context, environment, "vision/clipseg_decoder.tflite", fp16 = true)
-    private val text = context.loadVectors("vision/clipseg_text_embeddings.bin")
+    private val vision = CpuModel(models, environment, "clipseg_vision.tflite", fp16 = true)
+    private val decoder = CpuModel(models, environment, "clipseg_decoder.tflite", fp16 = true)
+    private val text = models.loadVectors("clipseg_text_embeddings.bin")
 
     fun map(photo: Bitmap, grid: Grid): Maps {
         // CLIPSeg works on the whole picture squeezed into a square.

@@ -1,6 +1,5 @@
 package org.tamodak.hisar.vision
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PointF
@@ -8,6 +7,7 @@ import android.graphics.RectF
 import androidx.core.graphics.createBitmap
 import com.google.ai.edge.litert.Environment
 import java.io.Closeable
+import java.io.File
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlin.math.max
@@ -286,9 +286,10 @@ internal class OutlineMasker private constructor(
         private const val MARGIN = 0.004f
 
         /**
-         * Loads the models, on the CPU. Takes a few seconds, so call it off the main thread.
+         * Loads the models from [models] (the downloaded files, [ModelRepository]), on the CPU.
+         * Takes a few seconds, so call it off the main thread.
          */
-        fun create(context: Context): OutlineMasker {
+        fun create(models: File): OutlineMasker {
             val opened = mutableListOf<Closeable>()
             fun <T : Closeable> open(model: T) = model.also { opened += it }
             try {
@@ -296,11 +297,11 @@ internal class OutlineMasker private constructor(
                 opened += Closeable { environment.close() }
                 val filter = OutlineMasker(
                     environment,
-                    open(PersonDetector(context)),
-                    open(ClipClassifier(context, environment)),
-                    open(PoseEstimator(context)),
-                    open(BodyPartMapper(context, environment)),
-                    open(Segmenter(context, environment)),
+                    open(PersonDetector(models)),
+                    open(ClipClassifier(models, environment)),
+                    open(PoseEstimator(models)),
+                    open(BodyPartMapper(models, environment)),
+                    open(Segmenter(models, environment)),
                 )
                 filter.warmUp()
                 return filter

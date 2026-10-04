@@ -1,6 +1,5 @@
 package org.tamodak.hisar.vision
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -10,6 +9,7 @@ import android.graphics.RectF
 import androidx.core.graphics.createBitmap
 import com.google.ai.edge.litert.Environment
 import java.io.Closeable
+import java.io.File
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
  * image encoder). The encoder reads the picture once; then each outline is a quick question to the
  * decoder: "what is in this box, through these points?"
  */
-internal class Segmenter(context: Context, environment: Environment) : Closeable {
+internal class Segmenter(models: File, environment: Environment) : Closeable {
 
     /** A picture the encoder has read. */
     class Picture(
@@ -30,8 +30,8 @@ internal class Segmenter(context: Context, environment: Environment) : Closeable
 
     // The encoder's layer norms were adjusted for fp16 (see tools/convert_sam.py); in fp16 its
     // output matched fp32 to a cosine of 0.99995 on a Galaxy S20 FE, in half the time.
-    private val encoder = CpuModel(context, environment, "vision/sam_encoder.tflite", fp16 = true)
-    private val decoder = CpuModel(context, environment, "vision/sam_decoder.tflite", fp16 = true)
+    private val encoder = CpuModel(models, environment, "sam_encoder.tflite", fp16 = true)
+    private val decoder = CpuModel(models, environment, "sam_decoder.tflite", fp16 = true)
     private val padding = Paint().apply { color = PADDING_COLOR }
 
     fun read(photo: Bitmap): Picture {

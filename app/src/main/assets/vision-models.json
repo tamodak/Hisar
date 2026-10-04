@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    { "name": "body_head.bin", "size": 2052, "sha256": "54672f15d02307957f8613da4239bc0a045ecd052d76ab7a0a0ede33ded6bb59" },
+    { "name": "clip_text_embeddings.bin", "size": 10240, "sha256": "10d83ff7755d315c7574a5bf73b4c32c41c79a7bab6b2a61d9f06e9cc6e15bbe" },
+    { "name": "clip_vit_b32_int8.tflite", "size": 89507200, "sha256": "f6fbbc45141cb6a0569bfa4cdf1e5ae00003890c4bffc368d0359ab3e0f5fe36" },
+    { "name": "clipseg_decoder.tflite", "size": 4578604, "sha256": "0d3e0c7da1b51e7d03f14fb132a46ff64f320422a7294622ab685238f3f80287" },
+    { "name": "clipseg_text_embeddings.bin", "size": 26624, "sha256": "7f01b41b46a892235c58bdcf6b573357ad7ac98a8fff70f0d270d43607076a86" },
+    { "name": "clipseg_vision.tflite", "size": 73578528, "sha256": "337d2c4b45f0cc75a7e26e063ebc622ede60d5b39e45e254f2680750a5e8637b" },
+    { "name": "efficientdet_lite2.tflite", "size": 7557887, "sha256": "6fd32c84ab1eb0f7e7f3a7a20a20d7df1530daa8378728f7c79571096286bd52" },
+    { "name": "movenet_lightning_int8.tflite", "size": 2894840, "sha256": "cd7cc22fa946e5d146a7b98d496853e1923e22828d3972d579973f27f91bb105" },
+    { "name": "sam_decoder.tflite", "size": 20587344, "sha256": "c5539ece48b42517a0b89f763e2250f6e953a670c846e1d8280d0b16596079fd" },
+    { "name": "sam_encoder.tflite", "size": 28217152, "sha256": "6f6b1d7022e556781c464a1cc53a3cbc4f8d7cf5df73305d73814e5c402a9258" }
+  ]
+}

@@ -7,6 +7,10 @@ plugins {
     alias(libs.plugins.room)
 }
 
+/** An app bundle (Play Store) splits by CPU type itself, and can't be built with APK splits. */
+val bundling = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
+val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+
 android {
     namespace = "org.tamodak.hisar"
     compileSdk {
@@ -22,6 +26,19 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1"
+
+        // The CPU types GeckoView ships its engine for. (LiteRT also has 32-bit x86, which would
+        // otherwise make Play offer the app to phones it can't run on.) APKs get them from the
+        // splits below; Android allows only one of the two.
+        if (bundling) ndk { abiFilters += abis }
+
+        // Where the picture filter's models are downloaded from on first start (they are not in the
+        // APK, to keep it small): the GitHub release made by tools/vision/package_models.sh.
+        // -Phisar.modelsUrl=… points a test build somewhere else (a local server).
+        val modelsVersion = providers.gradleProperty("hisar.modelsVersion").get()
+        val modelsUrl = providers.gradleProperty("hisar.modelsUrl")
+            .getOrElse("https://github.com/tamodak/Hisar/releases/download/models-$modelsVersion/")
+        buildConfigField("String", "MODELS_URL", "\"$modelsUrl\"")
     }
 
     buildTypes {
@@ -35,15 +52,18 @@ android {
     // APK per type keeps each install to its own.
     splits {
         abi {
-            isEnable = true
+            isEnable = !bundling
             reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            include(*abis.toTypedArray())
             isUniversalApk = false
         }
     }
-    androidResources {
-        // The image models are memory-mapped straight from the APK, which needs them uncompressed.
-        noCompress += "tflite"
+    packaging {
+        jniLibs {
+            // LiteRT's GPU accelerator: the image models run on the CPU (its GPU delegate rejects
+            // their operations), so 3 MB per CPU type saved.
+            excludes += "**/libLiteRtClGlAccelerator.so"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

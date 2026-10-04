@@ -42,18 +42,25 @@ import kotlin.time.measureTimedValue
 @Singleton
 class ImageFilter @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val models: ModelRepository,
     @ApplicationScope private val scope: CoroutineScope,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ) : ComponentCallbacks2 {
 
-    private val classifier = scope.async(dispatcher, CoroutineStart.LAZY) { BodyClassifier(context) }
+    private val classifier = scope.async(dispatcher, CoroutineStart.LAZY) {
+        models.awaitReady()
+        BodyClassifier(models.directory)
+    }
     private val classifying = Mutex()
     private val waiting = AtomicInteger()
 
     private val masking = Mutex()
     private var masker: OutlineMasker? = null
 
-    /** Loads the fast classifier in the background, so it is ready by the first picture. */
+    /**
+     * Loads the fast classifier in the background, so it is ready by the first picture (once the
+     * models are downloaded: [ModelRepository]).
+     */
     fun preload() {
         context.registerComponentCallbacks(this)
         classifier.start()
@@ -84,7 +91,8 @@ class ImageFilter @Inject constructor(
             // Pictures waiting to be judged hold up a page; outline masks only improve one.
             while (waiting.get() > 0) delay(YIELD_MILLIS)
             val bitmap = decode(image, mutable = true) ?: return@withLock null
-            val filter = masker ?: OutlineMasker.create(context).also { masker = it }
+            models.awaitReady()
+            val filter = masker ?: OutlineMasker.create(models.directory).also { masker = it }
             val result = filter.filter(bitmap)
             if (BuildConfig.DEBUG) Log.d(TAG, "outlined ${bitmap.width}x${bitmap.height} in ${result.totalTime}: ${result.reasons}")
             ByteArrayOutputStream().use { out ->

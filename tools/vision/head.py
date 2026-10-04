@@ -4,7 +4,9 @@ thresholds from out-of-fold scores: COVER catches [--recall] of the unsafe pictu
 import json, sys, numpy as np
 from sklearn.linear_model import LogisticRegression
 sys.path.insert(0, 'tools'); import compare
-from compare import order, oof
+from compare import oof
+import os
+order = json.load(open(os.environ.get('ORDER', 'order.json')))
 args = dict(a.split('=') for a in sys.argv[1:] if '=' in a)
 recall = float(args.get('recall', 0.97)); precision = float(args.get('precision', 0.95)); C = float(args.get('C', 4))
 lab = json.load(open('labels.json')); y = np.array([1 if lab[k] >= 1 else 0 for k in order]); compare.y = y

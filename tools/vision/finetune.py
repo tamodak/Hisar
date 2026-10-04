@@ -10,8 +10,10 @@ from sklearn.model_selection import StratifiedKFold
 torch.set_num_threads(10); torch.manual_seed(0)
 N = 8; EPOCHS = int(dict(a.split('=') for a in sys.argv[1:] if '=' in a).get('epochs', 6))
 LR = float(dict(a.split('=') for a in sys.argv[1:] if '=' in a).get('lr', 2e-5))
+# All labelled pictures: the first sample's tokens, then the second's (order_all.json).
+order = json.load(open('order_all.json'))
 lab = json.load(open('labels.json')); y = np.array([1 if lab[k] >= 1 else 0 for k in order]); compare.y = y
-T = [np.load(f'emb/tokens{N}_flip{f}.npy', mmap_mode='r') for f in (0, 1)]
+T = [np.concatenate([np.load(f'emb/tokens{N}_flip{f}.npy'), np.load(f'emb/new_tokens{N}_flip{f}.npy')]) for f in (0, 1)]
 base, _, _ = open_clip.create_model_and_transforms('ViT-B-32', pretrained='openai'); base.eval()
 class Tail(torch.nn.Module):
     def __init__(self, v):
@@ -48,8 +50,15 @@ def score(m, idx):
 if '--final' in sys.argv:
     m = train(np.arange(len(y))); torch.save(m.state_dict(), f'tail{N}.pt'); print('saved')
 else:
-    s = np.zeros(len(y))
-    for k, (tr, te) in enumerate(StratifiedKFold(5, shuffle=True, random_state=0).split(np.zeros(len(y)), y)):
-        m = train(tr); s[te] = score(m, np.sort(te)); print('fold', k, flush=True)
-    np.save(f'emb/oof_ft{N}_e{EPOCHS}_lr{LR}.npy', s)
-    print(line(f'finetune N={N} e={EPOCHS} lr={LR}', s))
+    # One fold (a fifth held out) against the frozen encoder's linear head on the same split.
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+    tr, te = next(StratifiedKFold(5, shuffle=True, random_state=0).split(np.zeros(len(y)), y))
+    X = np.load('emb/all_openai_b32_crop.npy')
+    lin = LogisticRegression(C=4, max_iter=5000, class_weight='balanced').fit(X[tr], y[tr]).decision_function(X[te])
+    m = train(tr); ft = score(m, te)
+    np.save(f'emb/fold0_ft{N}_e{EPOCHS}.npy', ft)
+    def fpr(s, r):
+        t = np.quantile(s[y[te] == 1], 1 - r); return (s[y[te] == 0] >= t).mean()
+    for name, s in [('linear', lin), (f'finetune N={N} e={EPOCHS} lr={LR}', ft)]:
+        print(f'{name:30s} AUC {roc_auc_score(y[te], s):.3f} FPR@95 {fpr(s, .95):.3f} FPR@98 {fpr(s, .98):.3f}', flush=True)

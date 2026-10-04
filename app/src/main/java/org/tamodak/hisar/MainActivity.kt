@@ -26,6 +26,9 @@ import org.tamodak.hisar.ui.browser.BrowserViewModel
 import org.tamodak.hisar.ui.browser.SystemLaunchers
 import org.tamodak.hisar.ui.components.FaviconLoader
 import org.tamodak.hisar.ui.navigation.HisarApp
+import org.tamodak.hisar.ui.setup.ModelSetupScreen
+import org.tamodak.hisar.ui.setup.ModelSetupViewModel
+import org.tamodak.hisar.vision.ModelRepository
 import org.tamodak.hisar.ui.theme.HisarTheme
 import org.tamodak.hisar.web.GeckoEngine
 import org.json.JSONObject
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity(), SystemLaunchers {
     @Inject lateinit var engine: GeckoEngine
 
     private val viewModel: BrowserViewModel by viewModels()
+    private val setup: ModelSetupViewModel by viewModels()
     private lateinit var controller: BrowserController
 
     private val fileChooser = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -82,8 +86,11 @@ class MainActivity : ComponentActivity(), SystemLaunchers {
                 val style = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
+            val models by setup.state.collectAsStateWithLifecycle()
             HisarTheme(simpleMode = settings.simpleMode, simpleFont = settings.simpleFont) {
-                HisarApp(controller, faviconLoader)
+                // First start: the picture filter's models come before the browser.
+                if (models == ModelRepository.State.Ready) HisarApp(controller, faviconLoader)
+                else ModelSetupScreen(models, setup::retry)
             }
         }
     }

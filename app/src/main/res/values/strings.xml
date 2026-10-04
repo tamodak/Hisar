@@ -208,4 +208,14 @@
     <string name="prompt_username">Username</string>
     <string name="prompt_password">Password</string>
     <string name="content_blocked">Hisar blocked this content</string>
+    <!-- First start: the picture filter's models are downloaded before the browser opens. -->
+    <string name="setup_title">Setting up the picture filter</string>
+    <string name="setup_text">Hisar checks every picture and video thumbnail before it is shown. Pictures that show a woman\'s bare body or nudity are covered, and such videos are taken out of the results.\n\nThis is done by AI models that Hisar downloads once, now (about 230 MB). Wi-Fi is recommended. The browser opens as soon as the download is complete.</string>
+    <string name="setup_privacy">The models run entirely on your phone: no picture you see is ever sent anywhere.</string>
+    <string name="setup_checking">Getting ready…</string>
+    <string name="setup_progress">%1$s of %2$s</string>
+    <string name="setup_wait">You can leave Hisar meanwhile: the download continues in the background.</string>
+    <string name="setup_failed">The download did not finish. Check your internet connection and try again.</string>
+    <string name="setup_retry">Try again</string>
+    <string name="models_notification">Hisar picture filter</string>
 </resources>

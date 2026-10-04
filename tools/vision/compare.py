@@ -3,8 +3,8 @@ import json, sys, numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
-order = json.load(open('order.json')); lab = json.load(open('labels.json'))
-sample = {e['id']: e['stratum'] for e in json.load(open('sample.json'))}
+import os; order = json.load(open(os.environ.get('ORDER', 'order.json'))); lab = json.load(open('labels.json'))
+sample = {e['id']: e['stratum'] for f in ('sample.json', 'pool.json') for e in json.load(open(f))}
 y = np.array([1 if lab[k] >= 1 else 0 for k in order]); sure = np.array([lab[k] != 2 for k in order])
 st = np.array([sample[k] for k in order])
 def oof(X, C=2):

@@ -193,4 +193,13 @@
     <string name="prompt_username">Kullanıcı adı</string>
     <string name="prompt_password">Şifre</string>
     <string name="content_blocked">Hisar bu içeriği engelledi</string>
+    <string name="setup_title">Resim filtresi kuruluyor</string>
+    <string name="setup_text">Hisar her resmi ve video küçük resmini gösterilmeden önce kontrol eder. Bir kadının çıplak bedenini veya çıplaklık gösteren resimler kapatılır, bu tür videolar da sonuçlardan çıkarılır.\n\nBunu, Hisar\'ın şimdi bir kez indirdiği yapay zekâ modelleri yapar (yaklaşık 230 MB). Wi-Fi önerilir. İndirme biter bitmez tarayıcı açılır.</string>
+    <string name="setup_privacy">Modeller tamamen telefonunuzda çalışır: gördüğünüz hiçbir resim hiçbir yere gönderilmez.</string>
+    <string name="setup_checking">Hazırlanıyor…</string>
+    <string name="setup_progress">%1$s / %2$s</string>
+    <string name="setup_wait">Bu sırada Hisar\'dan çıkabilirsiniz: indirme arka planda devam eder.</string>
+    <string name="setup_failed">İndirme tamamlanamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.</string>
+    <string name="setup_retry">Tekrar dene</string>
+    <string name="models_notification">Hisar resim filtresi</string>
 </resources>
