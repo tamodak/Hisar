@@ -101,8 +101,18 @@ Requirements: JDK 17+, Android SDK with platform 37.1. Toolchain: AGP 9.4, Gradl
 ./gradlew bundleRelease            # Play Store bundle (app/build/outputs/bundle/release)
 ```
 
-Release builds need your own signing key: add a `signingConfigs` block (or sign the bundle in
-Android Studio, *Build → Generate Signed App Bundle*). Never commit the key.
+Release builds are signed when a `keystore.properties` file in the project root points at your
+key (git ignores it; keep the key itself outside the project):
+
+```properties
+storeFile=/home/you/keys/hisar-upload.jks
+storePassword=…
+keyAlias=upload
+keyPassword=…
+```
+
+Without the file, release builds come out unsigned. For Google Play this is the *upload* key;
+Play App Signing keeps the key that signs what phones install.
 
 ### The picture filter's models
 

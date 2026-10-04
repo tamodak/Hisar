@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -41,11 +43,29 @@ android {
         buildConfigField("String", "MODELS_URL", "\"$modelsUrl\"")
     }
 
+    // The Play upload key, from keystore.properties in the project root (never committed; see the
+    // README). Without that file release builds are unsigned.
+    val keystoreFile = rootProject.file("keystore.properties")
+    val uploadKey = keystoreFile.takeIf { it.exists() }?.let { file ->
+        Properties().apply { file.inputStream().use { load(it) } }
+    }
+    signingConfigs {
+        if (uploadKey != null) {
+            create("upload") {
+                storeFile = file(uploadKey.getProperty("storeFile"))
+                storePassword = uploadKey.getProperty("storePassword")
+                keyAlias = uploadKey.getProperty("keyAlias")
+                keyPassword = uploadKey.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             optimization {
                 enable = true
             }
+            if (uploadKey != null) signingConfig = signingConfigs.getByName("upload")
         }
     }
     // GeckoView ships native libraries for three CPU types (about 160 MB each, uncompressed). One

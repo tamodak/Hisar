@@ -21,3 +21,8 @@ local.properties
 /dist
 tools/experiments/coverage/data/
 __pycache__/
+
+# Play upload key settings (passwords). The key itself lives outside the project.
+keystore.properties
+*.jks
+*.keystore
